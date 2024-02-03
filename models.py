@@ -120,6 +120,4 @@ class User:
 
 
 user = User('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')
-# user.register_user('bagher', 'fuckyou2', 'palahangmohammadbagher@gmail.com', '2020-04-04', '09023241014')
-# user.login_user('bagher', 'fuckyou2')
 # print(user.isAuthenticated)

@@ -1,6 +1,5 @@
-import mysql.connector
 from datetime import datetime
-from .db import DB_obj
+from db import DB_obj
 import utils
 
 class User:

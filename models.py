@@ -76,7 +76,7 @@ class User:
 
         user_data = (
             username,
-            password,
+            utils.hash_password(password),
             email,
             mobile_number,
             birthdate,
@@ -95,7 +95,7 @@ class User:
             print('You already logged in please logout first')
             return
         
-        self.cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        self.cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, utils.hash_password(password)))
         user_obj = self.cursor.fetchone()
 
         if not user_obj:
@@ -118,8 +118,6 @@ class User:
 
 
 user = User('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')
-print(user.isAuthenticated)
 
-user.register_user('ali', 'fuckyou2', 'pala@gmail.com', '1382-06-01', '0902341014')
-user.login_user('bagher', 'fuckyou2')
-print(user.user)
+user.register_user('bagher', 'Thisis@p@ssword', 'palahangmohammadbagher@gmail.com', '1382-06-01', '0902341014')
+# user.login_user('ali', 'fuckyou2')

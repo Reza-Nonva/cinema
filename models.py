@@ -112,6 +112,12 @@ class User:
         print(f"Dear {self.user['username']} you have just logged in")
         return
 
+    def change_profile(self):
+        pass
+
+    def change_password(self):
+        pass
+
     def logout(self):
         self.isAuthenticated = False
         self.user = None
@@ -119,5 +125,5 @@ class User:
 
 user = User('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')
 
-user.register_user('bagher', 'Thisis@p@ssword', 'palahangmohammadbagher@gmail.com', '1382-06-01', '0902341014')
+user.register_user('bagher2', 'Thisis@p@ssword', 'palahangmohammadbagher@gmail.com', '1382-06-01', '0902341014')
 # user.login_user('ali', 'fuckyou2')

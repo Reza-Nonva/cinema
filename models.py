@@ -70,14 +70,10 @@ class User:
             print(f"Error: Mobile Mumber '{mobile_number}' is not a valid email. Please use a different email.")
             return
 
-
-
         insert_query = """
             INSERT INTO users (username, password, email, mobile_number, birthdate, register_date, last_login_date, last_login_time) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
 
-
-#       TODO : add last login time
         user_data = (
             username,
             password,
@@ -86,7 +82,7 @@ class User:
             birthdate,
             datetime.now().date(),
             datetime.now().date(),
-            '10:23'
+            datetime.now().time(),
         )
 
         self.cursor.execute(insert_query, user_data)
@@ -99,20 +95,22 @@ class User:
             print('You already logged in please logout first')
             return
         
-        self.cursor.execute("SELECT id FROM users WHERE username = %s AND password = %s", (username, password))
-        user = self.cursor.fetchone()
+        self.cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+        user_obj = self.cursor.fetchone()
 
-        if not user:
+        if not user_obj:
             print('Authentication failed. password or email may be wrong')
             return
-        
-        # TODO : change last login and save user object in class atr
-        
-        self.isAuthenticated = True
-        self.user = user[0]
-        print(f'Dear {self.user} you have just logged in')
-        return
+                
+        columns = [column[0] for column in self.cursor.description]
+        self.user = dict(zip(columns, user_obj))
 
+        self.isAuthenticated = True
+
+        self.cursor.execute("UPDATE users SET last_login_time = %s WHERE id = %s", (datetime.now().time() ,self.user['id']))
+        self.connection.commit()
+        print(f"Dear {self.user['username']} you have just logged in")
+        return
 
     def logout(self):
         self.isAuthenticated = False
@@ -120,4 +118,8 @@ class User:
 
 
 user = User('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')
-# print(user.isAuthenticated)
+print(user.isAuthenticated)
+
+user.register_user('ali', 'fuckyou2', 'pala@gmail.com', '1382-06-01', '0902341014')
+user.login_user('bagher', 'fuckyou2')
+print(user.user)

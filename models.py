@@ -97,3 +97,22 @@ user = User()
 
 user.register_user(DB_obj.connection, DB_obj.cursor, 'Bagher5', 'Thisis@p@ssword1', 'palahangmohammadbagher5@gmail.com', '1382-06-01', '0902341014')
 # user.login_user(DB_obj.connection, DB_obj.cursor, 'ali', 'fuckyou2')
+
+class Movie:
+    name:str
+    year:int
+    age_range:int
+    def __init__():
+        pass
+    
+    
+    def add_movie(self, connection, cursor, name, year, age_range):
+        self.name = name
+        self.year = year
+        self.age_range = age_range
+        cursor.execute("SELECT id FROM movie WHERE name = %s", (self.name))
+        existing_movie = cursor.fetchone()
+        if existing_movie:
+            print(f"Error: Movie '{Movie}' is already added.")
+            return
+        insert_query = "INSERT INTO movie (name, year, age_range) VALUES ((%s, %s, %s))",(self.name, self.year, self.age_range)

@@ -15,7 +15,6 @@ class DBconnection:
         self.cursor = self.connection.cursor()
         self.create_table()
 
-
     def create_table(self):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS users (
@@ -30,8 +29,17 @@ class DBconnection:
             last_login_time TIME NOT NULL
         )
         """
+        create_movie_table_query = """
+        CREATE TABLE IF NOT EXISTS `movie`(
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `name` VARCHAR(255) NOT NULL,
+        `year` BIGINT NOT NULL,
+        `age_range` BIGINT NOT NULL
+        );
+        """
 
-        self.cursor.execute(create_table_query)
+        self.cursor.execute(create_movie_table_query)
         self.connection.commit()
+
 
 DB_obj = DBconnection('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')

@@ -169,10 +169,6 @@ user.login_user('Alireza2', 'Thisis@p@ssword2')
 
 
 class Movie:
-    name:str
-    year:int
-    age_range:int
-
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
@@ -192,16 +188,34 @@ class Movie:
         insert_query = """
             INSERT INTO movie (name, year, age_range) VALUES (%s, %s, %s)
         """
-
         movie_data = (name, year, age_range)
-
         self.cursor.execute(insert_query, movie_data)
         self.connection.commit()
-
         print(f"Movie '{name}' added")
+        return 
+    
+    def show_screening(self, user):
+        if not user :
+            print("Error: User should be logged in first.")
+            return
+        
+        self.cursor.execute(f"SELECT * FROM screening WHERE start_time > NOW();")
+        result = self.cursor.fetchall()
+
+        columns = [column[0] for column in self.cursor.description]
+        for row in result:
+            screening = dict(zip(columns, row))
+            self.cursor.execute("SELECT name FROM movie WHERE id = %s",(screening['movie_id'],))
+            result = self.cursor.fetchone()
+
+            print(f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}")
+
+
+
 
 movie = Movie(DB_obj.connection, DB_obj.cursor)
-movie.add_movie('inception', 2016, 18)
+# movie.add_movie('inception', 2016, 18)
+movie.show_screening(user.user)
 
 
 class Accounting:
@@ -209,21 +223,20 @@ class Accounting:
         self.connection = connection
         self.cursor = cursor
 
-
     def initial_setup_wallet(self, user):
         self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
         if self.cursor.fetchone():
+            print('You already have a wallet')
             return
         else:
             self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
             self.connection.commit()
 
-
-    
     def add_card_by_user(self, user, card_number, cvv2, date, password):
         if not utils.card_number_check(card_number):
             print(f'{card_number} is invalid card number')
             return
+        
         self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
         user_cards = self.cursor.fetchone()
         if user_cards:
@@ -251,7 +264,7 @@ class Accounting:
 
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
-accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
-accounting.initial_setup_wallet(user=user['id'])
-accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
-accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='11000')
+# accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
+# accounting.initial_setup_wallet(user=user.user['id'])
+# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
+# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='11000')

@@ -38,65 +38,72 @@ class DBconnection:
         );
         """
         create_accounting_tables = """
-        CREATE TABLE IF NOT EXISTS `plan_transaction`(
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            `plan_id` BIGINT NOT NULL,
-            `payment_code` BIGINT NOT NULL,
-            `date` DATETIME NOT NULL,
-            `user_id` INT NOT NULL
-        );
+
         CREATE TABLE IF NOT EXISTS `card_bank`(
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT NOT NULL,
-            `number` VARCHAR(16) NOT NULL,
+            `number` VARCHAR(16) NOT NULL UNIQUE,
             `cvv` BIGINT NOT NULL,
             `date` DATE NOT NULL,
-            `password` BIGINT NOT NULL
+            `password` BIGINT NOT NULL,
+            FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
         );
         
-        ALTER TABLE
-            `card_bank` ADD UNIQUE `card_bank_number_unique`(`number`);
+        
+        CREATE TABLE `wallet`(
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `balance` BIGINT NOT NULL DEFAULT '0',
+            FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
+        );
+
         CREATE TABLE IF NOT EXISTS `wallet_transaction`(
             `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             `payment_code` BIGINT NOT NULL,
             `card_id` VARCHAR(16) NOT NULL,
             `date` DATETIME NOT NULL,
             `pay_type` BIGINT NOT NULL,
-            `user_id` INT NOT NULL
-        );
-        ALTER TABLE
-            `wallet_transaction` ADD INDEX `wallet_transaction_payment_code_index`(`payment_code`);
-        ALTER TABLE
-            `users` ADD UNIQUE `users_username_unique`(`username`);
-        ALTER TABLE
-            `users` ADD UNIQUE `users_email_unique`(`email`);
-        CREATE TABLE `wallet`(
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT NOT NULL,
-            `balance` BIGINT NOT NULL DEFAULT '0'
+            FOREIGN KEY(`user_id`) REFERENCES `wallet`(`user_id`),
+            FOREIGN KEY(`card_id`) REFERENCES `card_bank`(`number`)
+
+        );
+        CREATE TABLE IF NOT EXISTS `plan_transaction`(
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `plan_id` BIGINT NOT NULL,
+            `payment_code` BIGINT NOT NULL,
+            `date` DATETIME NOT NULL,
+            `user_id` INT NOT NULL,
+            FOREIGN KEY(`user_id`) REFERENCES `wallet`(`user_id`)
         );
         CREATE TABLE IF NOT EXISTS `plan`(
             `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT NOT NULL,
             `plan_id` VARCHAR(255) NOT NULL,
             `start_time` DATETIME NOT NULL,
-            `finish_time` DATETIME NOT NULL
+            `finish_time` DATETIME NOT NULL,
+            FOREIGN KEY(`user_id`) REFERENCES `users`(`id`);
         );
-        ALTER TABLE
-            `plan_transaction` ADD CONSTRAINT `plan_transaction_user_id_foreign` FOREIGN KEY(`user_id`) REFERENCES `wallet`(`user_id`);
-        ALTER TABLE
-            `wallet` ADD CONSTRAINT `wallet_user_id_foreign` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`);
-        ALTER TABLE
-            `wallet_transaction` ADD CONSTRAINT `wallet_transaction_user_id_foreign` FOREIGN KEY(`user_id`) REFERENCES `wallet`(`user_id`);
-        ALTER TABLE
-            `card_bank` ADD CONSTRAINT `card_bank_user_id_foreign` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`);
-        ALTER TABLE
-            `plan` ADD CONSTRAINT `plan_user_id_foreign` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`);
-        ALTER TABLE
-            `wallet_transaction` ADD CONSTRAINT `wallet_transaction_card_id_foreign` FOREIGN KEY(`card_id`) REFERENCES `card_bank`(`number`);
         """
-
-        self.cursor.execute(create_accounting_tables)
+        create_screen_query = """
+        CREATE TABLE `screening`(
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `movie_id` BIGINT UNSIGNED NOT NULL,
+        `start_time` DATETIME NOT NULL,
+        `end_time` DATETIME NOT NULL,
+        `price` BIGINT NOT NULL,
+         FOREIGN KEY(`movie_id`) REFERENCES `movie`(`id`)
+        );
+        """
+        temp = """CREATE TABLE IF NOT EXISTS `plan`(
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `plan_id` VARCHAR(255) NOT NULL,
+            `start_time` DATETIME NOT NULL,
+            `finish_time` DATETIME NOT NULL,
+            FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
+        );"""
+        self.cursor.execute(temp)
         self.connection.commit()
 
 

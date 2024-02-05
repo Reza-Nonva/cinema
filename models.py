@@ -24,7 +24,7 @@ class User:
         if existing_email:
             print(f"Error: Email '{email}' is already used. Please choose a different email.")
             return
-        
+
         if not utils.validating_email(email):
             print(f"Error: Email '{email}' is not a valid email. Please use a different email.")
             return
@@ -32,7 +32,7 @@ class User:
         if not utils.validating_username(username):
             print("Error: Username should contain both uppercase and lowercase word . Please use a different username.")
             return
-    
+
         if not utils.validating_password(password):
             print("Error: Password should be mpre than 8 character and contain uppercase, lowercase, number and spercial signs . Please use a different password.")
             return
@@ -65,14 +65,14 @@ class User:
         if self.isAuthenticated:
             print('You already logged in please logout first')
             return
-        
+
         self.cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, utils.hash_password(password)))
         user_obj = self.cursor.fetchone()
 
         if not user_obj:
             print('Authentication failed. password or email may be wrong')
             return
-                
+
         columns = [column[0] for column in self.cursor.description]
         self.user = dict(zip(columns, user_obj))
 
@@ -87,7 +87,7 @@ class User:
         if not self.isAuthenticated:
             print("Error: User should be logged in first.")
             return
-        
+
         if username:
             self.cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
             existing_username = self.cursor.fetchone()
@@ -123,7 +123,6 @@ class User:
 
         self.connection.commit()
 
-
     def change_password(self, old_password, new_password, new_password_confirm):
         if not self.isAuthenticated:
             print("Error: User should be logged in first.")
@@ -132,7 +131,7 @@ class User:
         if new_password != new_password_confirm:
             print("Error: new_password and new_password_confirm should be the same.")
             return
-        
+
         if not utils.validating_password(new_password):
             print("Error: Password should be mpre than 8 character and contain uppercase, lowercase, number and spercial signs . Please use a different password.")
             return
@@ -143,7 +142,7 @@ class User:
         if not user_id:
             print('Error: username or old password is incorrect. please check and fill again.')
             return
-        
+
         self.cursor.execute("UPDATE users SET password = %s WHERE id = %s", (utils.hash_password(new_password), self.user['id']))
         self.connection.commit()
 
@@ -160,28 +159,99 @@ class User:
             return
         print(self.user['username'])
 
+
 user = User(DB_obj.connection, DB_obj.cursor)
 # user.register_user('Bagher6', 'Thisis@p@ssword1', 'palahangmohammadbagher6@gmail.com', '1382-06-01', '09023241014')
-user.login_user('ali', 'Thisis@p@ssword1')
+# user.login_user('ali', 'Thisis@p@ssword1')
 # user.change_password('Thisis@p@ssword1', 'Thisis@p@ssword2', 'Thisis@p@ssword2')
-user.login_user('Alireza1', 'Thisis@p@ssword2')
-user.change_profile(username='Alireza2', email='fuck@thefucking.world')
+user.login_user('Alireza2', 'Thisis@p@ssword2')
+# user.change_profile(username='Alireza2', email='fuck@thefucking.world')
+
 
 class Movie:
     name:str
     year:int
     age_range:int
-    def __init__():
-        pass
+
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
     
-    
-    def add_movie(self, connection, cursor, name, year, age_range):
+    def add_movie(self, name:str, year:int, age_range:int):
         self.name = name
         self.year = year
         self.age_range = age_range
-        cursor.execute("SELECT id FROM movie WHERE name = %s", (self.name))
-        existing_movie = cursor.fetchone()
+
+        self.cursor.execute("SELECT id FROM movie WHERE name = %s", (self.name,))
+        existing_movie = self.cursor.fetchone()
+
         if existing_movie:
             print(f"Error: Movie '{Movie}' is already added.")
             return
-        insert_query = "INSERT INTO movie (name, year, age_range) VALUES ((%s, %s, %s))",(self.name, self.year, self.age_range)
+
+        insert_query = """
+            INSERT INTO movie (name, year, age_range) VALUES (%s, %s, %s)
+        """
+
+        movie_data = (name, year, age_range)
+
+        self.cursor.execute(insert_query, movie_data)
+        self.connection.commit()
+
+        print(f"Movie '{name}' added")
+
+movie = Movie(DB_obj.connection, DB_obj.cursor)
+movie.add_movie('inception', 2016, 18)
+
+
+class Accounting:
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
+
+
+    def initial_setup_wallet(self, user):
+        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
+        if self.cursor.fetchone():
+            return
+        else:
+            self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
+            self.connection.commit()
+
+
+    
+    def add_card_by_user(self, user, card_number, cvv2, date, password):
+        if not utils.card_number_check(card_number):
+            print(f'{card_number} is invalid card number')
+            return
+        self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
+        user_cards = self.cursor.fetchone()
+        if user_cards:
+            print(f'{card_number} is already added')
+        else:
+            self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ({user}, {card_number}, {cvv2}, {date}, {password});")
+            self.connection.commit()
+            print(f'{card_number} is added successfully')
+
+    
+    def charge_wallet(self, user, card_number, cvv2, date, password, amount=None):
+        user_card = self.cursor.execute(f"select * from card_bank where user_id ={user} and number={card_number} and cvv={cvv2} and date={date} and password={password};")
+        user_card = self.cursor.fetchone()
+        if user_card:
+            payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user};")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(payment_code, card_id, date, pay_type, user_id) VALUES ({utils.payment_code_hash()}, {card_number}, '{payment_time}', 1, {user});")
+            self.connection.commit()
+            print(f'{amount} added successfully your wallet')
+
+        else:
+            print(f"card data is invalid")
+
+
+
+
+accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
+accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
+accounting.initial_setup_wallet(user=user['id'])
+accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
+accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='11000')

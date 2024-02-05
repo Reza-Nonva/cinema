@@ -194,6 +194,16 @@ class Movie:
         print(f"Movie '{name}' added")
         return 
     
+
+movie = Movie(DB_obj.connection, DB_obj.cursor)
+# movie.add_movie('inception', 2016, 18)
+
+
+class Screen:
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
+
     def show_screening(self, user):
         if not user :
             print("Error: User should be logged in first.")
@@ -210,13 +220,25 @@ class Movie:
 
             print(f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}")
 
+    def set_movie_screening(self, movie_id, start_time, end_time, price):
+        if not user:
+            print("Error: User should be logged in first.")
+            return
+        
+        self.cursor.execute("SELECT id FROM movie WHERE id = %s",(movie_id,))
+        movie_exist = self.cursor.fetchone()
+        
+        if not movie_exist:
+            print('Error : Movie has not declared')
+            return
+
+        self.cursor.execute(f"INSERT INTO screening (movie_id, start_time, end_time, price) VALUES ({movie_id}, {start_time}, {end_time}, {price})")
+        self.connection.commit()
 
 
-
-movie = Movie(DB_obj.connection, DB_obj.cursor)
-# movie.add_movie('inception', 2016, 18)
-movie.show_screening(user.user)
-
+screen = Screen(DB_obj.connection, DB_obj.cursor)    
+screen.show_screening(user.user)
+screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
 
 class Accounting:
     def __init__(self, connection, cursor):

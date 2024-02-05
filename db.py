@@ -108,3 +108,5 @@ class DBconnection:
 
 
 DB_obj = DBconnection('tai.liara.cloud', 33428, 'root', 'ErOmibw13imQzlzw3TIgyE10', 'focused_driscoll')
+
+# DB_obj.cursor.execute('ALTER TABLE users MODIFY COLUMN is_user BOOL NOT NULL DEFAULT FALSE;')

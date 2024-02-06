@@ -247,34 +247,9 @@ class Screen:
         self.connection.commit()
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
-
-    def reserve_screen(self, user, screen_id):
-        if not user :
-            print("Error: User should be logged in first.")
-            return
-        self.cursor.execute(f"""SELECT id, age_range
-                               FROM movie
-                               WHERE id = (SELECT movie_id
-                                           FROM screening 
-                                           WHERE id = {screen_id})""")
-        movie_data= self.cursor.fetchone()
-        if (movie_data[1] > user.user['age']):
-            print("Age limit, boro bozorg shodi bia")
-            return
-        buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
-        buy_screen.buy_screen(user = user, movie = movie_data[0], screen_id = screen_id)
-        print("ok")
-        
-        
-        
-# screen = Screen(DB_obj.connection, DB_obj.cursor)    
+screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)
 # screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
-
-screen = Screen(DB_obj.connection, DB_obj.cursor)    
-screen.show_screening(user.user)
-screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
-
 
 class Accounting:
     def __init__(self, connection, cursor):
@@ -365,19 +340,20 @@ class Accounting:
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
 
     
-    def buy_screen(self, user, movie:int, screen_time:int):
+    def buy_screen(self, user_id, movie:int, screen_id:int):
         screen_detail = self.cursor.execute(f"""
             SELECT name, year, start_time, end_time, screening.id, screening.price FROM screening
             LEFT JOIN movie
             ON screening.movie_id = movie.id
-            WHERE movie.id={movie} and screening.id ={screen_time};
+            WHERE movie.id={movie} and screening.id ={screen_id};
+            WHERE movie.id={movie} and screening.id ={screen_id};
         """)
         screen_detail = self.cursor.fetchone()
         user_balance = self.cursor.execute(f"""
             SELECT wallet.balance FROM users
             LEFT JOIN wallet
             on users.id = wallet.user_id
-            WHERE users.id={user};
+            WHERE users.id={user_id};
         """)
         user_balance = self.cursor.fetchone() # wallet balance
         self.connection.commit()
@@ -389,13 +365,12 @@ class Accounting:
         else:
             ticket_code = str(utils.payment_code_hash())[:10]
             with open('log.transaction', 'a') as f:
-                f.write(f"plan order: {screen_detail[0]}, user_id: {user}, price: {screen_detail[5]} from ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}), ticket_code: {ticket_code}\n")
-            self.cursor.execute(f"UPDATE wallet SET balance = balance - {screen_detail[5]} WHERE user_id={user};")
-            self.cursor.execute(f"INSERT INTO screen_transaction(screen_id, user_id, payment_code, buy_time) VALUES ({screen_detail[4]}, {user}, {ticket_code}, '{datetime.now()}');")
+                f.write(f"plan order: {screen_detail[0]}, user_id: {user_id}, price: {screen_detail[5]} from ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}), ticket_code: {ticket_code}\n")
+            self.cursor.execute(f"UPDATE wallet SET balance = balance - {screen_detail[5]} WHERE user_id={user_id};")
+            self.cursor.execute(f"INSERT INTO screen_transaction(screen_id, user_id, payment_code, buy_time) VALUES ({screen_detail[4]}, {user_id}, {ticket_code}, '{datetime.now()}');")
             self.connection.commit()
             print(f"Your ticket for movie {screen_detail[0]} ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}) has been successfully purchased")
             print(f"your ticket number is {ticket_code}")
-
             
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
@@ -408,6 +383,48 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
 # accounting.buy_screen(user=user.user['id'], movie=1, screen_time=1)
+
+
+class Ticket:
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
+
+    def buy_ticket(self, user:User, screen_id):
+        if not user :
+            print("Error: User should be logged in first.")
+            return
+
+        self.cursor.execute(f"""SELECT id, age_range
+                               FROM movie
+                               WHERE id = (SELECT movie_id
+                                           FROM screening 
+                                           WHERE id = {screen_id});""")
+        movie_data= self.cursor.fetchone()
+
+        self.cursor.execute(f"SELECT * FROM screening WHERE id = {screen_id} AND start_time > NOW();")
+        result = self.cursor.fetchall()
+
+        if not result:
+            print('Error : Screen start time has passed.')
+
+        if not movie_data:
+            print('Error : Movie has not found.')
+            return
+
+        age = datetime.now().date().year - user.user['birthdate'].year
+
+        if (movie_data[1] > age):
+            print("Age limit, boro bozorg shodi bia")
+            return
+
+        buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
+        buy_screen.buy_screen(user_id = user.user['id'], movie = movie_data[0], screen_id = screen_id)
+        print("you bought one")
+
+ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+ticket.buy_ticket(user, 7)
+
 
 class Movie_Rate:
     def __init__(self, connection, cursor):

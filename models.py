@@ -239,11 +239,20 @@ class Screen:
         if not user :
             print("Error: User should be logged in first.")
             return
-        self.cursor.execute(f"""SELECT age_range
+        self.cursor.execute(f"""SELECT id, age_range
                                FROM movie
                                WHERE id = (SELECT movie_id
                                            FROM screening 
                                            WHERE id = {screen_id})""")
+        movie_data= self.cursor.fetchone()
+        if (movie_data[1] > user.user['age']):
+            print("Age limit, boro bozorg shodi bia")
+            return
+        buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
+        buy_screen.buy_screen(user = user, movie = movie_data[0], screen_id = screen_id)
+        print("ok")
+        
+        
         
 # screen = Screen(DB_obj.connection, DB_obj.cursor)    
 # screen.show_screening(user.user)

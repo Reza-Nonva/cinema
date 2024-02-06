@@ -346,6 +346,7 @@ class Accounting:
             LEFT JOIN movie
             ON screening.movie_id = movie.id
             WHERE movie.id={movie} and screening.id ={screen_id};
+            WHERE movie.id={movie} and screening.id ={screen_id};
         """)
         screen_detail = self.cursor.fetchone()
         user_balance = self.cursor.execute(f"""

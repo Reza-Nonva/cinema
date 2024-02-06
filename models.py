@@ -245,6 +245,8 @@ class Screen:
 
         self.cursor.execute(insert_query, screening_data)
         self.connection.commit()
+        print(f'{movie_exist[0]} added to screen start time : {start_time}')
+
 
     def reserve_screen(self, user, screen_id):
         if not user :
@@ -268,6 +270,7 @@ class Screen:
 # screen = Screen(DB_obj.connection, DB_obj.cursor)    
 # screen.show_screening(user.user)
 # screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+>>>>>>>>> Temporary merge branch 2
 
 class Accounting:
     def __init__(self, connection, cursor):
@@ -350,7 +353,7 @@ class Accounting:
             finish_time = datetime.now() + timedelta(days=31)
             pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
-                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}\n, pay_hash: {pay_hash}")
+                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}, pay_hash: {pay_hash}\n")
             self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', {user});")
             self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
@@ -381,6 +384,8 @@ class Accounting:
             return
         else:
             ticket_code = str(utils.payment_code_hash())[:10]
+            with open('log.transaction', 'a') as f:
+                f.write(f"plan order: {screen_detail[0]}, user_id: {user}, price: {screen_detail[5]} from ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}), ticket_code: {ticket_code}\n")
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {screen_detail[5]} WHERE user_id={user};")
             self.cursor.execute(f"INSERT INTO screen_transaction(screen_id, user_id, payment_code, buy_time) VALUES ({screen_detail[4]}, {user}, {ticket_code}, '{datetime.now()}');")
             self.connection.commit()

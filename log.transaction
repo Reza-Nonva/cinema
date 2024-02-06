@@ -2,3 +2,6 @@ plan: silver, user_id: 3, price: 50000 from 2024-02-06 11:14:33.804317 to 2024-0
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 11:16:29
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 11:16:54
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 11:17:17
+charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:26:47
+charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:29:35
+charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:30:05

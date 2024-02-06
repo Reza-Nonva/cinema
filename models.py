@@ -395,6 +395,7 @@ class Accounting:
             self.connection.commit()
             print(f"Your ticket for movie {screen_detail[0]} ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}) has been successfully purchased")
             print(f"your ticket number is {ticket_code}")
+
             
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
@@ -407,3 +408,122 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
 # accounting.buy_screen(user=user.user['id'], movie=1, screen_time=1)
+
+class Movie_Rate:
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
+
+    def rate_movie(self, user_id, movie_id, rating):
+        # Validate the rating
+        if not (1 <= rating <= 5):
+            print("Error: Rate should be between 1 and 5")
+            return
+
+        # Check the user exists
+        user_check_query = "SELECT id FROM users WHERE id = %s"
+        self.cursor.execute(user_check_query, (user_id,))
+        user_exists = self.cursor.fetchone()
+
+        if not user_exists:
+            print(f"Error: User with id {user_id} does not exist.")
+            return
+
+        # Check if the movie exists
+        movie_check_query = "SELECT id FROM movies WHERE id = %s"
+        self.cursor.execute(movie_check_query, (movie_id,))
+        movie_exists = self.cursor.fetchone()
+
+        if not movie_exists:
+            print(f"Error: Movie with id {movie_id} does not exist.")
+            return
+
+        # Check if the user has already rated the movie
+        check_query = "SELECT id FROM rank WHERE user_id = %s AND movie_id = %s"
+        self.cursor.execute(check_query, (user_id, movie_id))
+        existing_rank = self.cursor.fetchone()
+
+        if existing_rank:
+            print("Error: You have already rated this movie.")
+            return
+
+        # Insert the new rating
+        insert_query = ("INSERT INTO rank (USER_ID, MOVIE_ID, RATING)"
+                        " VALUES (%s, %s, %s)")
+
+        rank_data = (
+            user_id,
+            movie_id,
+            rating
+        )
+        self.cursor.execute(insert_query, rank_data)
+        self.connection.commit()
+        print(f"Rating added: {rating} star for movie {movie_id} by User {user_id}")
+
+    def calculate_average_rating(self, movie_id):
+        movie_check_query = "SELECT id FROM movies WHERE id = %s"
+        self.cursor.execute(movie_check_query, (movie_id,))
+        movie_exists = self.cursor.fetchone()
+
+        if not movie_exists:
+            print(f"Error: Movie with id {movie_id} does not exist.")
+            return None
+
+        # Calculate the average rating for the movie
+        average_query = "SELECT AVG(rating) FROM rank WHERE movie_id = %s"
+        self.cursor.execute(average_query, (movie_id,))
+        average_rating = self.cursor.fetchone()[0]
+        return average_rating
+
+    def top_rated_movies(self, num_movies=10):
+        # Retrieve the top-rated movies based on average ratings
+        top_rated_query = """
+            SELECT movies.id, AVG(rank.rating) as average_rating
+            FROM movies
+            JOIN rank ON movies.id = rank.movie_id
+            GROUP BY rank.movie_id, movies.id
+            ORDER BY average_rating DESC
+            LIMIT %s
+        """
+        self.cursor.execute(top_rated_query, (num_movies,))
+        top_rated_movies = self.cursor.fetchall()
+
+        return top_rated_movies
+
+    def get_movie_screenings(self, movie_id):
+        # Retrieve the number of screenings for a specific movie
+        movie_screenings_query = """
+            SELECT COUNT(*) as num_screenings
+            FROM screening
+            WHERE movie_id = %s
+        """
+
+        self.cursor.execute(movie_screenings_query, (movie_id,))
+        num_movie_screenings = self.cursor.fetchone()[0]
+        return num_movie_screenings
+
+    def write_comment(self, user_id, movie_id, comment_text, parent_comment_id=None):
+        # Create comment
+        insert_comment_query = """
+            INSERT INTO comments (user_id, movie_id, parent_comment_id, comment_text, create_date)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        comment_data = (
+            user_id, movie_id, parent_comment_id, comment_text, datetime.now()
+        )
+        self.cursor.execute(insert_comment_query, comment_data)
+        self.connection.commit()
+
+        # Create a reply if the comment is a reply to an original comment
+        if parent_comment_id:
+            insert_reply_query = """
+                INSERT INTO replies (comment_id, user_id, reply_text, create_date)
+                VALUES (%s, %s, %s, %s)
+            """
+            reply_data = (
+                parent_comment_id, user_id, comment_text, datetime.now()
+            )
+            self.cursor.execute(insert_reply_query, reply_data)
+            self.connection.commit()
+
+        print("Comment sent successfully.")

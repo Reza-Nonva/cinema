@@ -274,6 +274,8 @@ class Accounting:
         user_card = self.cursor.fetchone()
         if user_card:
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            with open('log.transaction', 'a') as f:
+                f.write(f"charge wallet, user_id={user},amount={amount},pay_date={payment_time}\n")
             self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user};")
             self.cursor.execute(f"INSERT INTO wallet_transaction(payment_code, card_id, date, pay_type, user_id) VALUES ({utils.payment_code_hash()}, {card_number}, '{payment_time}', 1, {user});")
             self.connection.commit()
@@ -316,6 +318,8 @@ class Accounting:
         else:
             payment_time = datetime.now()
             finish_time = datetime.now() + timedelta(days=31)
+            with open('log.transaction', 'a') as f:
+                f.write(f"plan: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}\n")
             self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {utils.payment_code_hash()}, '{payment_time}', {user});")
             self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
@@ -327,8 +331,8 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
-# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='11000')
+accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='120000')
 # print(accounting.wallet_balance(user=user.user['id']))
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
-accounting.buy_plan(user=user.user['id'], plan_name='bronze')
+# accounting.buy_plan(user=user.user['id'], plan_name='silver')

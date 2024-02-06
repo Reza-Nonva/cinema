@@ -225,20 +225,32 @@ class Screen:
             print("Error: User should be logged in first.")
             return
         
-        self.cursor.execute("SELECT id FROM movie WHERE id = %s",(movie_id,))
+        self.cursor.execute("SELECT name FROM movie WHERE id = %s",(movie_id,))
         movie_exist = self.cursor.fetchone()
         
         if not movie_exist:
             print('Error : Movie has not declared')
             return
 
-        self.cursor.execute(f"INSERT INTO screening (movie_id, start_time, end_time, price) VALUES ({movie_id}, {start_time}, {end_time}, {price})")
+        insert_query = """
+            INSERT INTO screening (movie_id, start_time, end_time, price) VALUES (%s, %s, %s, %s)
+        """
+
+        screening_data = (
+            movie_id,
+            start_time,
+            end_time,
+            price
+        )
+
+        self.cursor.execute(insert_query, screening_data)
         self.connection.commit()
+        print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
 
-# screen = Screen(DB_obj.connection, DB_obj.cursor)    
-# screen.show_screening(user.user)
-# screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+screen = Screen(DB_obj.connection, DB_obj.cursor)    
+screen.show_screening(user.user)
+screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
 
 class Accounting:
     def __init__(self, connection, cursor):

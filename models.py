@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from db import DB_obj
 import utils
 
@@ -236,9 +236,9 @@ class Screen:
         self.connection.commit()
 
 
-screen = Screen(DB_obj.connection, DB_obj.cursor)    
-screen.show_screening(user.user)
-screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+# screen = Screen(DB_obj.connection, DB_obj.cursor)    
+# screen.show_screening(user.user)
+# screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
 
 class Accounting:
     def __init__(self, connection, cursor):
@@ -283,6 +283,44 @@ class Accounting:
             print(f"card data is invalid")
 
 
+    def wallet_balance(self, user:int):
+        balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
+        balance = self.cursor.fetchone()[0]
+        self.connection.commit()
+        return balance
+
+
+    def initial_plan_mode(self, user:int):
+        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
+        if self.cursor.fetchone():
+            print('You already have a basic plan')
+            return
+        else:
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
+            self.connection.commit()
+
+    def buy_plan(self, user:int, plan_name):
+        plan_price = {
+            'bronze':[1, 10000],
+            'silver': [2, 50000],
+            'gold': [3, 100000],
+        }
+        
+        self.cursor.execute(f"SELECT plan_id from plan where user_id = {user};")
+        user_current_plan = self.cursor.fetchone()
+        self.connection.commit()
+        if self.wallet_balance(user) < plan_price[plan_name][1]:
+            print('Your wallet balance is not enough')
+        elif int(user_current_plan[0]) == plan_price[plan_name][0]:
+            print('You already have this plan')
+        else:
+            payment_time = datetime.now()
+            finish_time = datetime.now() + timedelta(days=31)
+            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {utils.payment_code_hash()}, '{payment_time}', {user});")
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
+            self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
+            self.connection.commit()
+            print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
 
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
@@ -290,3 +328,7 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.initial_setup_wallet(user=user.user['id'])
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='11000')
+# print(accounting.wallet_balance(user=user.user['id']))
+# buying plan by user
+# accounting.initial_plan_mode(user=user.user['id'])
+accounting.buy_plan(user=user.user['id'], plan_name='bronze')

@@ -235,7 +235,16 @@ class Screen:
         self.cursor.execute(f"INSERT INTO screening (movie_id, start_time, end_time, price) VALUES ({movie_id}, {start_time}, {end_time}, {price})")
         self.connection.commit()
 
-
+    def reserve_screen(self, user, screen_id):
+        if not user :
+            print("Error: User should be logged in first.")
+            return
+        self.cursor.execute(f"""SELECT age_range
+                               FROM movie
+                               WHERE id = (SELECT movie_id
+                                           FROM screening 
+                                           WHERE id = {screen_id})""")
+        
 # screen = Screen(DB_obj.connection, DB_obj.cursor)    
 # screen.show_screening(user.user)
 # screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)

@@ -286,10 +286,11 @@ class Accounting:
         user_card = self.cursor.fetchone()
         if user_card:
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
                 f.write(f"charge wallet, user_id={user},amount={amount},pay_date={payment_time}\n")
             self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user};")
-            self.cursor.execute(f"INSERT INTO wallet_transaction(payment_code, card_id, date, pay_type, user_id) VALUES ({utils.payment_code_hash()}, {card_number}, '{payment_time}', 1, {user});")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(payment_code, card_id, date, pay_type, user_id) VALUES ({pay_hash}, {card_number}, '{payment_time}', 1, {user});")
             self.connection.commit()
             print(f'{amount} added successfully your wallet')
 
@@ -330,21 +331,53 @@ class Accounting:
         else:
             payment_time = datetime.now()
             finish_time = datetime.now() + timedelta(days=31)
+            pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
-                f.write(f"plan: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}\n")
-            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {utils.payment_code_hash()}, '{payment_time}', {user});")
+                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}\n, pay_hash: {pay_hash}")
+            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', {user});")
             self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
             self.connection.commit()
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
 
+    
+    def buy_screen(self, user, movie:int, screen_time:int):
+        screen_detail = self.cursor.execute(f"""
+            SELECT name, year, start_time, end_time, screening.id, screening.price FROM screening
+            LEFT JOIN movie
+            ON screening.movie_id = movie.id
+            WHERE movie.id={movie} and screening.id ={screen_time};
+        """)
+        screen_detail = self.cursor.fetchone()
+        user_balance = self.cursor.execute(f"""
+            SELECT wallet.balance FROM users
+            LEFT JOIN wallet
+            on users.id = wallet.user_id
+            WHERE users.id={user};
+        """)
+        user_balance = self.cursor.fetchone() # wallet balance
+        self.connection.commit()
+        # print(f"movie: {screen_detail[0]}-{screen_detail[1]} in screen {screen_detail[4]} from {screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}")
+        # check has enough money in wallet for buy a ticket
+        if screen_detail[5] > user_balance[0]:
+            print("you don'y have enough money in your wallet, please first charge your wallet")
+            return
+        else:
+            ticket_code = str(utils.payment_code_hash())[:10]
+            self.cursor.execute(f"UPDATE wallet SET balance = balance - {screen_detail[5]} WHERE user_id={user};")
+            self.cursor.execute(f"INSERT INTO screen_transaction(screen_id, user_id, payment_code, buy_time) VALUES ({screen_detail[4]}, {user}, {ticket_code}, '{datetime.now()}');")
+            self.connection.commit()
+            print(f"Your ticket for movie {screen_detail[0]} ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}) has been successfully purchased")
+            print(f"your ticket number is {ticket_code}")
+            
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
-accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='120000')
+# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='120000')
 # print(accounting.wallet_balance(user=user.user['id']))
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
+# accounting.buy_screen(user=user.user['id'], movie=1, screen_time=1)

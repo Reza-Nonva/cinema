@@ -5,3 +5,4 @@ charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 11:17:17
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:26:47
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:29:35
 charge wallet, user_id=3,amount=120000,pay_date=2024-02-06 16:30:05
+plan order: inception, user_id: 3, price: 100 from (2024-02-06 20:00:00 to 2024-02-06 21:30:00), ticket_code: 1986686671

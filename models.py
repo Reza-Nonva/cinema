@@ -341,12 +341,12 @@ class Accounting:
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
 
     
-    def buy_screen(self, user, movie:int, screen_time:int):
+    def buy_screen(self, user, movie:int, screen_id:int):
         screen_detail = self.cursor.execute(f"""
             SELECT name, year, start_time, end_time, screening.id, screening.price FROM screening
             LEFT JOIN movie
             ON screening.movie_id = movie.id
-            WHERE movie.id={movie} and screening.id ={screen_time};
+            WHERE movie.id={movie} and screening.id ={screen_id};
         """)
         screen_detail = self.cursor.fetchone()
         user_balance = self.cursor.execute(f"""
@@ -380,4 +380,4 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
-# accounting.buy_screen(user=user.user['id'], movie=1, screen_time=1)
+# accounting.buy_screen(user=user.user['id'], movie=1, screen_id=1)

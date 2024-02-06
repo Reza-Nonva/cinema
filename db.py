@@ -103,6 +103,40 @@ class DBconnection:
             `finish_time` DATETIME NOT NULL,
             FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
         );"""
+
+        create_comment_table_query = """
+                CREATE TABLE IF NOT EXISTS comments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT,
+                    movie_id INT,
+                    parent_comment_id INT,
+                    comment_text TEXT,
+                    create_date DATETIME,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (movie_id) REFERENCES movies(id)
+                );
+                """
+
+        create_table_rank_query = """
+                    CREATE TABLE IF NOT EXISTS rank (
+                        ID INT AUTO_INCREMENT PRIMARY KEY,
+                        rating INT CHECK(rating >= 1 AND rating <= 5), 
+                        FOREIGN KEY (USER_ID) REFERENCES USER(ID),
+                        FOREIGN KEY (MOVIE_ID) REFERENCES MOVIE(ID)
+                    ); 
+                """
+
+        create_table_replies_query = """
+                CREATE TABLE IF NOT EXISTS replies (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    comment_id INT,
+                    user_id INT,
+                    reply_text TEXT,
+                    create_date DATETIME,
+                    FOREIGN KEY (comment_id) REFERENCES comments(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                );
+                """
         self.cursor.execute(temp)
         self.connection.commit()
 

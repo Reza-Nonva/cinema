@@ -248,9 +248,33 @@ class Screen:
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
 
+    def reserve_screen(self, user, screen_id):
+        if not user :
+            print("Error: User should be logged in first.")
+            return
+        self.cursor.execute(f"""SELECT id, age_range
+                               FROM movie
+                               WHERE id = (SELECT movie_id
+                                           FROM screening 
+                                           WHERE id = {screen_id})""")
+        movie_data= self.cursor.fetchone()
+        if (movie_data[1] > user.user['age']):
+            print("Age limit, boro bozorg shodi bia")
+            return
+        buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
+        buy_screen.buy_screen(user = user, movie = movie_data[0], screen_id = screen_id)
+        print("ok")
+        
+        
+        
+# screen = Screen(DB_obj.connection, DB_obj.cursor)    
+# screen.show_screening(user.user)
+# screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+
 screen = Screen(DB_obj.connection, DB_obj.cursor)    
 screen.show_screening(user.user)
 screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+
 
 class Accounting:
     def __init__(self, connection, cursor):

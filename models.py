@@ -270,7 +270,6 @@ class Screen:
 # screen = Screen(DB_obj.connection, DB_obj.cursor)    
 # screen.show_screening(user.user)
 # screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
->>>>>>>>> Temporary merge branch 2
 
 class Accounting:
     def __init__(self, connection, cursor):

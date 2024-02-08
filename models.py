@@ -386,13 +386,26 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 
 
 class Ticket:
+    '''
+        This is a ticket class
+    '''
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
 
-    def buy_ticket(self, user:User, screen_id):
+    def buy_ticket(self, user:User, screen_id:int, chair_number):
+        '''
+            buying a ticket
+        '''
         if not user :
             print("Error: User should be logged in first.")
+            return
+        
+        self.cursor.execute(f"SELECT id FROM ticket WHERE chair_number = {chair_number}")
+        is_chair_alreay_booked = self.cursor.fetchone()
+
+        if is_chair_alreay_booked:
+            print('Error: this chair is already booked plases reserve another')
             return
 
         self.cursor.execute(f"""SELECT id, age_range
@@ -401,29 +414,40 @@ class Ticket:
                                            FROM screening 
                                            WHERE id = {screen_id});""")
         movie_data= self.cursor.fetchone()
-
+        
         self.cursor.execute(f"SELECT * FROM screening WHERE id = {screen_id} AND start_time > NOW();")
         result = self.cursor.fetchall()
 
         if not result:
             print('Error : Screen start time has passed.')
+            return
 
         if not movie_data:
             print('Error : Movie has not found.')
             return
 
-        age = datetime.now().date().year - user.user['birthdate'].year
+        age = datetime.now().date().year - user.user['birthdate'].year 
 
         if (movie_data[1] > age):
             print("Age limit, boro bozorg shodi bia")
             return
-
+    
         buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
         buy_screen.buy_screen(user_id = user.user['id'], movie = movie_data[0], screen_id = screen_id)
+
+        ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
+        ticket_data = (
+            user.user['id'],
+            screen_id,
+            chair_number
+        )
+        self.cursor.execute(ticket_query, ticket_data)
+        self.connection.commit()
+
         print("you bought one")
 
 ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-ticket.buy_ticket(user, 7)
+ticket.buy_ticket(user, 9, 4)
 
 
 class Movie_Rate:

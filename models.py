@@ -349,6 +349,11 @@ class Accounting:
             WHERE movie.id={movie} and screening.id ={screen_id};
         """)
         screen_detail = self.cursor.fetchone()
+
+        if screen_detail is None:
+            print("Screening details not found")
+            return
+
         user_balance = self.cursor.execute(f"""
             SELECT wallet.balance FROM users
             LEFT JOIN wallet
@@ -356,7 +361,11 @@ class Accounting:
             WHERE users.id={user_id};
         """)
         user_balance = self.cursor.fetchone() # wallet balance
-        self.connection.commit()
+
+        if user_balance is None:
+            print("User balance not found")
+            return
+        
         # print(f"movie: {screen_detail[0]}-{screen_detail[1]} in screen {screen_detail[4]} from {screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}")
         # check has enough money in wallet for buy a ticket
         if screen_detail[5] > user_balance[0]:
@@ -393,7 +402,7 @@ class Ticket:
         self.connection = connection
         self.cursor = cursor
 
-    def buy_ticket(self, user:User, screen_id:int, chair_number):
+    def buy_ticket(self, user:User, screen_id:int, chair_number:int):
         '''
             buying a ticket
         '''
@@ -406,6 +415,10 @@ class Ticket:
 
         if is_chair_alreay_booked:
             print('Error: this chair is already booked plases reserve another')
+            return
+
+        if chair_number > 50 or chair_number < 1:
+            print("Error : Chair number is out of range")
             return
 
         self.cursor.execute(f"""SELECT id, age_range
@@ -439,15 +452,30 @@ class Ticket:
         ticket_data = (
             user.user['id'],
             screen_id,
-            chair_number
+            chair_number,
         )
         self.cursor.execute(ticket_query, ticket_data)
         self.connection.commit()
 
         print("you bought one")
 
+    def show_available_chairs(self, screen_id):
+        self.cursor.execute(f'SELECT chair_number FROM ticket WHERE screen_id = {screen_id}')
+        empty_chairs = self.cursor.fetchall()
+
+        if not empty_chairs:
+            print('Error : this screen id doesn\'t exist')
+            return
+        
+        booked_chairs = set(num[0] for num in empty_chairs)
+        free_chairs = [num for num in range(1, 51) if num not in booked_chairs]
+        print(f'list of free chairs in {screen_id} screen : {free_chairs}')
+        return
+
+
 ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-ticket.buy_ticket(user, 9, 4)
+# ticket.buy_ticket(user, 9, 6)
+ticket.show_available_chairs(9)
 
 
 class Movie_Rate:

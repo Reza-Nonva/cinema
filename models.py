@@ -347,7 +347,7 @@ class Accounting:
             ON screening.movie_id = movie.id
             WHERE movie.id={movie} and screening.id ={screen_id};
             WHERE movie.id={movie} and screening.id ={screen_id};
-        """)
+        """, multi=True)
         screen_detail = self.cursor.fetchone()
 
         if screen_detail is None:
@@ -391,7 +391,7 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
-# accounting.buy_screen(user=user.user['id'], movie=1, screen_time=1)
+accounting.buy_screen(user_id=user.user['id'], movie=1, screen_id=1)
 
 
 class Ticket:
@@ -473,9 +473,9 @@ class Ticket:
         return
 
 
-ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+# ticket = Ticket(DB_obj.connection, DB_obj.cursor)
 # ticket.buy_ticket(user, 9, 6)
-ticket.show_available_chairs(9)
+# ticket.show_available_chairs(9)
 
 
 class Movie_Rate:

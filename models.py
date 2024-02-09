@@ -295,7 +295,7 @@ class Accounting:
             return True
         else:
             return False
-
+ 
     def wallet_balance(self, user:int):
         balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
         balance = self.cursor.fetchone()[0]

@@ -265,7 +265,7 @@ class Accounting:
             self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
             self.connection.commit()
 
-    def add_card_by_user(self, user, card_number, cvv2, date, password):
+    def add_card_by_user(self, user, card_number, date, cvv2, password):
         if not utils.card_number_check(card_number):
             print(f'{card_number} is invalid card number')
             return
@@ -279,30 +279,28 @@ class Accounting:
             self.connection.commit()
             print(f'{card_number} is added successfully')
 
-    
-    def charge_wallet(self, user, card_number, cvv2, date, password, amount=None):
-        user_card = self.cursor.execute(f"select * from card_bank where user_id ={user} and number={card_number} and cvv={cvv2} and date={date} and password={password};")
+    def deposite_harvest_wallet(self, user, card_number, cvv2, password, amount=None):
+        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user, card_number, cvv2, password))
         user_card = self.cursor.fetchone()
+
         if user_card:
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
                 f.write(f"charge wallet, user_id={user},amount={amount},pay_date={payment_time}\n")
+            pay_type = 1 if amount > 0 else 0
             self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user};")
-            self.cursor.execute(f"INSERT INTO wallet_transaction(payment_code, card_id, date, pay_type, user_id) VALUES ({pay_hash}, {card_number}, '{payment_time}', 1, {user});")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user});")
             self.connection.commit()
-            print(f'{amount} added successfully your wallet')
-
+            return True
         else:
-            print(f"card data is invalid")
-
+            return False
 
     def wallet_balance(self, user:int):
         balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
         balance = self.cursor.fetchone()[0]
         self.connection.commit()
         return balance
-
 
     def initial_plan_mode(self, user:int):
         self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
@@ -338,7 +336,6 @@ class Accounting:
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
             self.connection.commit()
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
-
     
     def buy_screen(self, user_id, movie:int, screen_id:int):
         screen_detail = self.cursor.execute(f"""
@@ -380,7 +377,6 @@ class Accounting:
             self.connection.commit()
             print(f"Your ticket for movie {screen_detail[0]} ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}) has been successfully purchased")
             print(f"your ticket number is {ticket_code}")
-            
 
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
@@ -391,7 +387,7 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
-accounting.buy_screen(user_id=user.user['id'], movie=1, screen_id=1)
+# accounting.buy_screen(user_id=user.user['id'], movie=1, screen_id=1)
 
 
 class Ticket:
@@ -457,7 +453,7 @@ class Ticket:
         self.cursor.execute(ticket_query, ticket_data)
         self.connection.commit()
 
-        print("you bought one")
+        print(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
 
     def show_available_chairs(self, screen_id):
         self.cursor.execute(f'SELECT chair_number FROM ticket WHERE screen_id = {screen_id}')
@@ -471,11 +467,44 @@ class Ticket:
         free_chairs = [num for num in range(1, 51) if num not in booked_chairs]
         print(f'list of free chairs in {screen_id} screen : {free_chairs}')
         return
+    
+    def cancel_ticket(self, ticket_id):
+        self.cursor.execute(f'SELECT user_id, screen_id, chair_number FROM ticket WHERE id = {ticket_id}')
+        ticket_data = self.cursor.fetchone()
 
+        if not ticket_data:
+            print('Error : Ticket with this id have not found')
+            return
+        
+        self.cursor.execute(f'SELECT price, start_time FROM screening WHERE id = {ticket_data[1]} AND start_time > NOW()')
+        screen_data = self.cursor.fetchone()
 
-# ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-# ticket.buy_ticket(user, 9, 6)
+        if not screen_data:
+            print('Error : This screen has already started')
+            return
+        
+        self.cursor.execute(f'SELECT number, cvv, password FROM card_bank where user_id = {ticket_data[0]}')
+        card_data = self.cursor.fetchone()
+
+        if not card_data:
+            print(f'Error : User has no bank card')
+            return
+
+        price = screen_data[0] if screen_data[1] - datetime.now() > timedelta(hours=1) else screen_data[0] / 100 * 82
+        accounting = Accounting(DB_obj.connection, DB_obj.cursor)
+        if accounting.deposite_harvest_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], price):
+            print(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
+            self.cursor.execute(f'DELETE FROM ticket WHERE id = {ticket_id}')
+            self.connection.commit()
+        else:
+            print('card is invalid')
+
+        return
+
+ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+ticket.buy_ticket(user, 9, 8)
 # ticket.show_available_chairs(9)
+# ticket.cancel_ticket(2)
 
 
 class Movie_Rate:

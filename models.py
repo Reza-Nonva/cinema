@@ -279,18 +279,28 @@ class Accounting:
             self.connection.commit()
             print(f'{card_number} is added successfully')
 
-    def deposite_harvest_wallet(self, user, card_number, cvv2, password, amount=None):
-        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user, card_number, cvv2, password))
+    def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
+        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user_id, card_number, cvv2, password))
         user_card = self.cursor.fetchone()
 
         if user_card:
+            print(self.wallet_balance(user_id))
+            print(amount)
+            if pay_type == 0:
+                if self.wallet_balance(user_id) - amount < 0:
+                    return False
+                else:
+                    amount = -amount
+            
+            
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             pay_hash = utils.payment_code_hash()
+
             with open('log.transaction', 'a') as f:
-                f.write(f"charge wallet, user_id={user},amount={amount},pay_date={payment_time}\n")
-            pay_type = 1 if amount > 0 else 0
-            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user};")
-            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user});")
+                f.write(f"transiction in wallet, user_id={user_id},amount={amount},pay_date={payment_time}\n")
+
+            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user_id};")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user_id});")
             self.connection.commit()
             return True
         else:
@@ -337,47 +347,6 @@ class Accounting:
             self.connection.commit()
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
     
-    def buy_screen(self, user_id, movie:int, screen_id:int):
-        screen_detail = self.cursor.execute(f"""
-            SELECT name, year, start_time, end_time, screening.id, screening.price FROM screening
-            LEFT JOIN movie
-            ON screening.movie_id = movie.id
-            WHERE movie.id={movie} and screening.id ={screen_id};
-            WHERE movie.id={movie} and screening.id ={screen_id};
-        """, multi=True)
-        screen_detail = self.cursor.fetchone()
-
-        if screen_detail is None:
-            print("Screening details not found")
-            return
-
-        user_balance = self.cursor.execute(f"""
-            SELECT wallet.balance FROM users
-            LEFT JOIN wallet
-            on users.id = wallet.user_id
-            WHERE users.id={user_id};
-        """)
-        user_balance = self.cursor.fetchone() # wallet balance
-
-        if user_balance is None:
-            print("User balance not found")
-            return
-        
-        # print(f"movie: {screen_detail[0]}-{screen_detail[1]} in screen {screen_detail[4]} from {screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}")
-        # check has enough money in wallet for buy a ticket
-        if screen_detail[5] > user_balance[0]:
-            print("you don'y have enough money in your wallet, please first charge your wallet")
-            return
-        else:
-            ticket_code = str(utils.payment_code_hash())[:10]
-            with open('log.transaction', 'a') as f:
-                f.write(f"plan order: {screen_detail[0]}, user_id: {user_id}, price: {screen_detail[5]} from ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}), ticket_code: {ticket_code}\n")
-            self.cursor.execute(f"UPDATE wallet SET balance = balance - {screen_detail[5]} WHERE user_id={user_id};")
-            self.cursor.execute(f"INSERT INTO screen_transaction(screen_id, user_id, payment_code, buy_time) VALUES ({screen_detail[4]}, {user_id}, {ticket_code}, '{datetime.now()}');")
-            self.connection.commit()
-            print(f"Your ticket for movie {screen_detail[0]} ({screen_detail[2].strftime('%Y-%m-%d %H:%M:%S')} to {screen_detail[3].strftime('%Y-%m-%d %H:%M:%S')}) has been successfully purchased")
-            print(f"your ticket number is {ticket_code}")
-
 accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
@@ -387,8 +356,6 @@ accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # buying plan by user
 # accounting.initial_plan_mode(user=user.user['id'])
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
-# accounting.buy_screen(user_id=user.user['id'], movie=1, screen_id=1)
-
 
 class Ticket:
     '''
@@ -424,10 +391,10 @@ class Ticket:
                                            WHERE id = {screen_id});""")
         movie_data= self.cursor.fetchone()
         
-        self.cursor.execute(f"SELECT * FROM screening WHERE id = {screen_id} AND start_time > NOW();")
-        result = self.cursor.fetchall()
+        self.cursor.execute(f"SELECT price FROM screening WHERE id = {screen_id} AND start_time > NOW();")
+        screen_price = self.cursor.fetchone()
 
-        if not result:
+        if not screen_price:
             print('Error : Screen start time has passed.')
             return
 
@@ -438,22 +405,34 @@ class Ticket:
         age = datetime.now().date().year - user.user['birthdate'].year 
 
         if (movie_data[1] > age):
-            print("Age limit, boro bozorg shodi bia")
+            print("Error : This movie is not suit for you.")
             return
     
-        buy_screen = Accounting(connection=self.connection, cursor=self.cursor)
-        buy_screen.buy_screen(user_id = user.user['id'], movie = movie_data[0], screen_id = screen_id)
+        self.cursor.execute(f"SELECT number, cvv, password FROM card_bank where user_id = {user.user['id']}")
+        card_data = self.cursor.fetchone()
 
-        ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
-        ticket_data = (
-            user.user['id'],
-            screen_id,
-            chair_number,
-        )
-        self.cursor.execute(ticket_query, ticket_data)
-        self.connection.commit()
+        if not card_data:
+            print(f'Error : User has no bank card')
+            return
 
-        print(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
+        transition = Accounting(connection=self.connection, cursor=self.cursor)
+        if transition.deposite_withdraw_wallet(user.user['id'], card_data[0], card_data[1], card_data[2], 0, screen_price[0]):
+
+            ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
+            ticket_data = (
+                user.user['id'],
+                screen_id,
+                chair_number,
+            )
+            self.cursor.execute(ticket_query, ticket_data)
+            self.connection.commit()
+
+            print(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
+
+        else:
+            print('Error : card have not found or low cash')
+
+        return
 
     def show_available_chairs(self, screen_id):
         self.cursor.execute(f'SELECT chair_number FROM ticket WHERE screen_id = {screen_id}')
@@ -492,7 +471,7 @@ class Ticket:
 
         price = screen_data[0] if screen_data[1] - datetime.now() > timedelta(hours=1) else screen_data[0] / 100 * 82
         accounting = Accounting(DB_obj.connection, DB_obj.cursor)
-        if accounting.deposite_harvest_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], price):
+        if accounting.deposite_withdraw_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], 1, price):
             print(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
             self.cursor.execute(f'DELETE FROM ticket WHERE id = {ticket_id}')
             self.connection.commit()
@@ -502,7 +481,7 @@ class Ticket:
         return
 
 ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-ticket.buy_ticket(user, 9, 8)
+ticket.buy_ticket(user, 9, 41)
 # ticket.show_available_chairs(9)
 # ticket.cancel_ticket(2)
 

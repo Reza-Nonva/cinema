@@ -392,7 +392,7 @@ class Ticket:
         movie_data= self.cursor.fetchone()
         
         self.cursor.execute(f"SELECT price FROM screening WHERE id = {screen_id} AND start_time > NOW();")
-        screen_price = self.cursor.fetchone()
+        screen_price = self.cursor.fetchone()[0]
 
         if not screen_price:
             print('Error : Screen start time has passed.')
@@ -415,8 +415,11 @@ class Ticket:
             print(f'Error : User has no bank card')
             return
 
+        if datetime.now().date().month == user.user['birthdate'].month and datetime.now().date().day == user.user['birthdate'].day:
+            screen_price = screen_price / 2
+
         transition = Accounting(connection=self.connection, cursor=self.cursor)
-        if transition.deposite_withdraw_wallet(user.user['id'], card_data[0], card_data[1], card_data[2], 0, screen_price[0]):
+        if transition.deposite_withdraw_wallet(user.user['id'], card_data[0], card_data[1], card_data[2], 0, screen_price):
 
             ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
             ticket_data = (
@@ -481,7 +484,7 @@ class Ticket:
         return
 
 ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-ticket.buy_ticket(user, 9, 41)
+ticket.buy_ticket(user, 9, 40)
 # ticket.show_available_chairs(9)
 # ticket.cancel_ticket(2)
 

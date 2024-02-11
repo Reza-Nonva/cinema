@@ -12,25 +12,23 @@ class Accounting:
     def initial_setup_wallet(self, user:int):
         self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
         if self.cursor.fetchone():
-            print('You already have a wallet')
-            return
+            return('You already have a wallet')
         else:
             self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
             self.connection.commit()
 
-    def add_card_by_user(self, user, card_number, date, cvv2, password):
+    def add_card_by_user(self, user:int, card_number:str, date, cvv2:int, password):
         if not utils.card_number_check(card_number):
-            print(f'{card_number} is invalid card number')
-            return
+            return(f'{card_number} is invalid card number')
         
         self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
         user_cards = self.cursor.fetchone()
         if user_cards:
-            print(f'{card_number} is already added')
+            return(f'{card_number} is already added')
         else:
             self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ({user}, {card_number}, {cvv2}, {date}, {password});")
             self.connection.commit()
-            print(f'{card_number} is added successfully')
+            return(f'{card_number} is added successfully')
 
     def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
         user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user_id, card_number, cvv2, password))
@@ -68,8 +66,7 @@ class Accounting:
     def initial_plan_mode(self, user:int):
         self.cursor.execute(f"SELECT * FROM plan WHERE user_id={user};")
         if self.cursor.fetchone():
-            print('You already have a basic plan')
-            return
+            return('You already have a basic plan')
         else:
             self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
             self.connection.commit()
@@ -99,7 +96,15 @@ class Accounting:
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
             self.connection.commit()
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
-
+#accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
+# accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
+# accounting.initial_setup_wallet(user=user.user['id'])
+# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
+# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='120000')
+# print(accounting.wallet_balance(user=user.user['id']))
+# buying plan by user
+# accounting.initial_plan_mode(user=user.user['id'])
+# accounting.buy_plan(user=user.user['id'], plan_name='silver')
 
 class User:
     def __init__(self, connection, cursor):
@@ -157,8 +162,10 @@ class User:
         self.cursor.execute(insert_query, user_data)
         self.connection.commit()
         self.initial_accounting(username=username)
+        
         return(f'username {username} is registered successfully, you can login')
-        #self.login_user(username, password)
+        
+
     def initial_accounting(self, username):
         """
             a func to setup initial wallet and plan to a new user
@@ -257,10 +264,29 @@ class User:
         self.isAuthenticated = False
         self.user = None
         return("you log out successfully")
+    
+    def charge_wallet(self, card_number:str, amount:int):
+        if not self.isAuthenticated:
+            return("Error: User should be logged in first.")
+        self.cursor.execute(f"SELECT * FROM card_bank WHERE number = '{card_number}'")
+        card_user_detail = self.cursor.fetchone()
+        
+        if card_user_detail is None:
+            return("the card is not added to your wallet")
+        
+        elif card_user_detail[1] != self.user["id"]:
+            return("The entrance card number is not for you")
+        
+        elif card_user_detail[1] == self.user["id"]:
+            transaction = Accounting(DB_obj.connection, DB_obj.cursor)
+            answer = transaction.deposite_withdraw_wallet(self.user["id"], card_user_detail[2], card_user_detail[3], card_user_detail[5], 1, amount)
+            if answer:
+                return("you wallet charged succesfully")
+            else:
+                return("somthing went wrong!")
     def __str__(self):
         if not user.isAuthenticated:
-            print('You are not logged in')
-            return
+            return('You are not logged in')
         print(self.user['username'])
 
 
@@ -357,15 +383,7 @@ class Screen:
 
 
     
-#accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
-# accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
-# accounting.initial_setup_wallet(user=user.user['id'])
-# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
-# accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='120000')
-# print(accounting.wallet_balance(user=user.user['id']))
-# buying plan by user
-# accounting.initial_plan_mode(user=user.user['id'])
-# accounting.buy_plan(user=user.user['id'], plan_name='silver')
+
 
 class Ticket:
     '''
@@ -379,9 +397,8 @@ class Ticket:
         '''
             buying a ticket
         '''
-        if not user :
-            print("Error: User should be logged in first.")
-            return
+        if not user.isAuthenticated:
+            return("Error: User should be logged in first.")
         
         self.cursor.execute(f"SELECT id FROM ticket WHERE chair_number = {chair_number}")
         is_chair_alreay_booked = self.cursor.fetchone()

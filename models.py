@@ -2,6 +2,105 @@ from datetime import datetime, timedelta
 from db import DB_obj
 import utils
 
+
+
+class Accounting:
+    def __init__(self, connection, cursor):
+        self.connection = connection
+        self.cursor = cursor
+
+    def initial_setup_wallet(self, user:int):
+        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
+        if self.cursor.fetchone():
+            print('You already have a wallet')
+            return
+        else:
+            self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
+            self.connection.commit()
+
+    def add_card_by_user(self, user, card_number, date, cvv2, password):
+        if not utils.card_number_check(card_number):
+            print(f'{card_number} is invalid card number')
+            return
+        
+        self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
+        user_cards = self.cursor.fetchone()
+        if user_cards:
+            print(f'{card_number} is already added')
+        else:
+            self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ({user}, {card_number}, {cvv2}, {date}, {password});")
+            self.connection.commit()
+            print(f'{card_number} is added successfully')
+
+    def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
+        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user_id, card_number, cvv2, password))
+        user_card = self.cursor.fetchone()
+
+        if user_card:
+            print(self.wallet_balance(user_id))
+            print(amount)
+            if pay_type == 0:
+                if self.wallet_balance(user_id) - amount < 0:
+                    return False
+                else:
+                    amount = -amount
+            
+            
+            payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            pay_hash = utils.payment_code_hash()
+
+            with open('log.transaction', 'a') as f:
+                f.write(f"transiction in wallet, user_id={user_id},amount={amount},pay_date={payment_time}\n")
+
+            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user_id};")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user_id});")
+            self.connection.commit()
+            return True
+        else:
+            return False
+ 
+    def wallet_balance(self, user:int):
+        balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
+        balance = self.cursor.fetchone()[0]
+        self.connection.commit()
+        return balance
+
+    def initial_plan_mode(self, user:int):
+        self.cursor.execute(f"SELECT * FROM plan WHERE user_id={user};")
+        if self.cursor.fetchone():
+            print('You already have a basic plan')
+            return
+        else:
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
+            self.connection.commit()
+
+    def buy_plan(self, user:int, plan_name):
+        plan_price = {
+            'bronze':[1, 10000],
+            'silver': [2, 50000],
+            'gold': [3, 100000],
+        }
+        
+        self.cursor.execute(f"SELECT plan_id from plan where user_id = {user};")
+        user_current_plan = self.cursor.fetchone()
+        self.connection.commit()
+        if self.wallet_balance(user) < plan_price[plan_name][1]:
+            print('Your wallet balance is not enough')
+        elif int(user_current_plan[0]) == plan_price[plan_name][0]:
+            print('You already have this plan')
+        else:
+            payment_time = datetime.now()
+            finish_time = datetime.now() + timedelta(days=31)
+            pay_hash = utils.payment_code_hash()
+            with open('log.transaction', 'a') as f:
+                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}, pay_hash: {pay_hash}\n")
+            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', {user});")
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
+            self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
+            self.connection.commit()
+            print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
+
+
 class User:
     def __init__(self, connection, cursor):
         self.connection = connection
@@ -57,9 +156,19 @@ class User:
 
         self.cursor.execute(insert_query, user_data)
         self.connection.commit()
+        self.initial_accounting(username=username)
         return(f'username {username} is registered successfully, you can login')
         #self.login_user(username, password)
-
+    def initial_accounting(self, username):
+        """
+            a func to setup initial wallet and plan to a new user
+        """
+        self.cursor.execute(f"SELECT id FROM users WHERE username = '{username}'")
+        user_id = int(self.cursor.fetchone()[0])
+        accounting = Accounting(DB_obj.connection, DB_obj.cursor)
+        accounting.initial_setup_wallet(user = user_id)
+        accounting.initial_plan_mode(user = user_id)
+        
     def login_user(self, username, password):
         if self.isAuthenticated:
             return('You already logged in please logout first')
@@ -125,29 +234,24 @@ class User:
 
     def change_password(self, old_password, new_password, new_password_confirm):
         if not self.isAuthenticated:
-            print("Error: User should be logged in first.")
-            return
+            return("Error: User should be logged in first.")
 
         if new_password != new_password_confirm:
-            print("Error: new_password and new_password_confirm should be the same.")
-            return
+            return("Error: new_password and new_password_confirm should be the same.")
 
         if not utils.validating_password(new_password):
-            print("Error: Password should be mpre than 8 character and contain uppercase, lowercase, number and spercial signs . Please use a different password.")
-            return
-
+            return("Error: Password should be mpre than 8 character and contain uppercase, lowercase, number and spercial signs . Please use a different password.")
+            
         self.cursor.execute("SELECT id FROM users WHERE username = %s AND password = %s", (self.user['username'], utils.hash_password(old_password)))
         user_id = self.cursor.fetchone()
 
         if not user_id:
-            print('Error: username or old password is incorrect. please check and fill again.')
-            return
-
+            return('Error: username or old password is incorrect. please check and fill again.')
+            
         self.cursor.execute("UPDATE users SET password = %s WHERE id = %s", (utils.hash_password(new_password), self.user['id']))
         self.connection.commit()
 
-        print(f"Dear {self.user['username']} you have just change your password")
-        return
+        return(f"Dear {self.user['username']} you have just change your password")
 
     def logout(self):
         self.isAuthenticated = False
@@ -160,11 +264,11 @@ class User:
         print(self.user['username'])
 
 
-user = User(DB_obj.connection, DB_obj.cursor)
+#user = User(DB_obj.connection, DB_obj.cursor)
 # user.register_user('Bagher6', 'Thisis@p@ssword1', 'palahangmohammadbagher6@gmail.com', '1382-06-01', '09023241014')
 # user.login_user('ali', 'Thisis@p@ssword1')
 # user.change_password('Thisis@p@ssword1', 'Thisis@p@ssword2', 'Thisis@p@ssword2')
-user.login_user('Alireza2', 'Thisis@p@ssword2')
+#user.login_user('Alireza2', 'Thisis@p@ssword2')
 # user.change_profile(username='Alireza2', email='fuck@thefucking.world')
 
 
@@ -195,7 +299,7 @@ class Movie:
         return 
     
 
-movie = Movie(DB_obj.connection, DB_obj.cursor)
+#movie = Movie(DB_obj.connection, DB_obj.cursor)
 # movie.add_movie('inception', 2016, 18)
 
 
@@ -204,24 +308,24 @@ class Screen:
         self.connection = connection
         self.cursor = cursor
 
+    
     def show_screening(self, user):
-        if not user :
-            print("Error: User should be logged in first.")
-            return
+        if not user.isAuthenticated :
+            return("Error: User should be logged in first.")
         
         self.cursor.execute(f"SELECT * FROM screening WHERE start_time > NOW();")
         result = self.cursor.fetchall()
-
+        text = ""
         columns = [column[0] for column in self.cursor.description]
         for row in result:
             screening = dict(zip(columns, row))
             self.cursor.execute("SELECT name FROM movie WHERE id = %s",(screening['movie_id'],))
             result = self.cursor.fetchone()
 
-            print(f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}")
-
+            text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
+        return(text)
     def set_movie_screening(self, movie_id, start_time, end_time, price):
-        if not user:
+        if not user.isAuthenticated:
             print("Error: User should be logged in first.")
             return
         
@@ -247,107 +351,13 @@ class Screen:
         self.connection.commit()
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
-screen = Screen(DB_obj.connection, DB_obj.cursor)
+#screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)
-# screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+#screen.set_movie_screening(1, '2024-10-10 20:00:00', '2024-02-06 21:30:00', 100)
 
-class Accounting:
-    def __init__(self, connection, cursor):
-        self.connection = connection
-        self.cursor = cursor
 
-    def initial_setup_wallet(self, user):
-        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
-        if self.cursor.fetchone():
-            print('You already have a wallet')
-            return
-        else:
-            self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
-            self.connection.commit()
-
-    def add_card_by_user(self, user, card_number, date, cvv2, password):
-        if not utils.card_number_check(card_number):
-            print(f'{card_number} is invalid card number')
-            return
-        
-        self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
-        user_cards = self.cursor.fetchone()
-        if user_cards:
-            print(f'{card_number} is already added')
-        else:
-            self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ({user}, {card_number}, {cvv2}, {date}, {password});")
-            self.connection.commit()
-            print(f'{card_number} is added successfully')
-
-    def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
-        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user_id, card_number, cvv2, password))
-        user_card = self.cursor.fetchone()
-
-        if user_card:
-            print(self.wallet_balance(user_id))
-            print(amount)
-            if pay_type == 0:
-                if self.wallet_balance(user_id) - amount < 0:
-                    return False
-                else:
-                    amount = -amount
-            
-            
-            payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            pay_hash = utils.payment_code_hash()
-
-            with open('log.transaction', 'a') as f:
-                f.write(f"transiction in wallet, user_id={user_id},amount={amount},pay_date={payment_time}\n")
-
-            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user_id};")
-            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user_id});")
-            self.connection.commit()
-            return True
-        else:
-            return False
- 
-    def wallet_balance(self, user:int):
-        balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
-        balance = self.cursor.fetchone()[0]
-        self.connection.commit()
-        return balance
-
-    def initial_plan_mode(self, user:int):
-        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
-        if self.cursor.fetchone():
-            print('You already have a basic plan')
-            return
-        else:
-            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
-            self.connection.commit()
-
-    def buy_plan(self, user:int, plan_name):
-        plan_price = {
-            'bronze':[1, 10000],
-            'silver': [2, 50000],
-            'gold': [3, 100000],
-        }
-        
-        self.cursor.execute(f"SELECT plan_id from plan where user_id = {user};")
-        user_current_plan = self.cursor.fetchone()
-        self.connection.commit()
-        if self.wallet_balance(user) < plan_price[plan_name][1]:
-            print('Your wallet balance is not enough')
-        elif int(user_current_plan[0]) == plan_price[plan_name][0]:
-            print('You already have this plan')
-        else:
-            payment_time = datetime.now()
-            finish_time = datetime.now() + timedelta(days=31)
-            pay_hash = utils.payment_code_hash()
-            with open('log.transaction', 'a') as f:
-                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}, pay_hash: {pay_hash}\n")
-            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', {user});")
-            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
-            self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
-            self.connection.commit()
-            print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
     
-accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
+#accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
@@ -483,8 +493,8 @@ class Ticket:
 
         return
 
-ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-ticket.buy_ticket(user, 9, 40)
+#ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+#ticket.buy_ticket(user, 9, 40)
 # ticket.show_available_chairs(9)
 # ticket.cancel_ticket(2)
 

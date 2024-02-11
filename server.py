@@ -18,6 +18,8 @@ server.bind(ADDR)
 menu = """+register [username] [password] [email] [birthdate] [mobile number]
 +login [username] [password] 
 +change_profile [username or email or mobile_number] [new value]         
++change_password [old password] [new password] [confirm new password]
++show_screening_movie
 +logout
 +dis """
     
@@ -44,18 +46,19 @@ def handle_request(user, msg:str):
                     return (user.change_profile(email = msg[2]))  
                 case "mobile_number":
                     return (user.change_profile(mobile_number = msg[2]))
+        case "change_password":
+            return(user.change_password(old_password=msg[1], new_password=msg[2], new_password_confirm=msg[3]))
+        
+        case "show_screening_movie":
+            screen = models.Screen(DB_obj.connection, DB_obj.cursor)
+            return(screen.show_screening(user=user))
+
         case "logout":
             return(user.logout())
         
-    if msg[0] == "login":
-        temp = user.login_user(msg[1], msg[2])
-        return(temp)
+        case _:
+            return("invalid command, run menu to see commands")
     
-    if msg[0] == "menu":
-        return (menu)
-    else:
-        return ("ridi")
-
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
     connected = True

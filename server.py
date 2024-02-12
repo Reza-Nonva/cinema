@@ -22,6 +22,8 @@ menu = """+register [username] [password] [email] [birthdate] [mobile number]
 +show_screening_movie
 +add_card [card number] [date] [cvv2] [password]
 +charge_wallet [card nummber] [amout]
++show_available_chairs [screen id]
++buy_ticket [screen id] [chair number]
 +logout
 +dis """
     
@@ -65,7 +67,14 @@ def handle_request(user, msg:str):
         
         case "charge_wallet":
             return(user.charge_wallet(msg[1], msg[2]))
-            
+        
+        case "show_available_chairs":
+            ticket = models.Ticket(DB_obj.connection, DB_obj.cursor)
+            return (ticket.show_available_chairs(int(msg[1])))
+        
+        case "buy_ticket":
+            ticket = models.Ticket(DB_obj.connection, DB_obj.cursor)
+            return(ticket.buy_ticket(user, int(msg[1]), int(msg[2])))
         case "logout":
             return(user.logout())
         

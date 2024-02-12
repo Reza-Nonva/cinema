@@ -400,16 +400,14 @@ class Ticket:
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
         
-        self.cursor.execute(f"SELECT id FROM ticket WHERE chair_number = {chair_number}")
+        self.cursor.execute(f"SELECT id FROM ticket WHERE chair_number = {chair_number} AND screen_id = {screen_id}")
         is_chair_alreay_booked = self.cursor.fetchone()
 
         if is_chair_alreay_booked:
-            print('Error: this chair is already booked plases reserve another')
-            return
+            return('Error: this chair is already booked plases reserve another')
 
         if chair_number > 50 or chair_number < 1:
-            print("Error : Chair number is out of range")
-            return
+            return("Error : Chair number is out of range")
 
         self.cursor.execute(f"""SELECT id, age_range
                                FROM movie
@@ -422,25 +420,21 @@ class Ticket:
         screen_price = self.cursor.fetchone()[0]
 
         if not screen_price:
-            print('Error : Screen start time has passed.')
-            return
+            return('Error : Screen start time has passed.')
 
         if not movie_data:
-            print('Error : Movie has not found.')
-            return
+            return('Error : Movie has not found.')
 
         age = datetime.now().date().year - user.user['birthdate'].year 
 
         if (movie_data[1] > age):
-            print("Error : This movie is not suit for you.")
-            return
+            return("Error : This movie is not suit for you.")
     
         self.cursor.execute(f"SELECT number, cvv, password FROM card_bank where user_id = {user.user['id']}")
         card_data = self.cursor.fetchone()
 
         if not card_data:
-            print(f'Error : User has no bank card')
-            return
+            return(f'Error : User has no bank card')
 
         if datetime.now().date().month == user.user['birthdate'].month and datetime.now().date().day == user.user['birthdate'].day:
             screen_price = screen_price / 2
@@ -457,25 +451,22 @@ class Ticket:
             self.cursor.execute(ticket_query, ticket_data)
             self.connection.commit()
 
-            print(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
+            return(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
 
         else:
-            print('Error : card have not found or low cash')
+            return('Error : card have not found or low cash')
 
-        return
 
     def show_available_chairs(self, screen_id):
         self.cursor.execute(f'SELECT chair_number FROM ticket WHERE screen_id = {screen_id}')
         empty_chairs = self.cursor.fetchall()
 
         if not empty_chairs:
-            print('Error : this screen id doesn\'t exist')
-            return
+            return('Error : this screen id doesn\'t exist')
         
         booked_chairs = set(num[0] for num in empty_chairs)
         free_chairs = [num for num in range(1, 51) if num not in booked_chairs]
-        print(f'list of free chairs in {screen_id} screen : {free_chairs}')
-        return
+        return(f'list of free chairs in {screen_id} screen : {free_chairs}')
     
     def cancel_ticket(self, ticket_id):
         self.cursor.execute(f'SELECT user_id, screen_id, chair_number FROM ticket WHERE id = {ticket_id}')

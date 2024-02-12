@@ -450,8 +450,15 @@ class Ticket:
             )
             self.cursor.execute(ticket_query, ticket_data)
             self.connection.commit()
-
-            return(f"you bought a ticket with for {user.user['username']} in chair number {chair_number}.")
+            self.cursor.execute(f"""SELECT id
+                                    FROM ticket
+                                    WHERE user_id = {user.user['id']} AND
+                                    screen_id= {screen_id} AND
+                                    chair_number = {chair_number}
+                                    ORDER BY id DESC
+                                    LIMIT 1 """)
+            ticket_id = self.cursor.fetchone()[0]
+            return(f""""you bought a ticket with for {user.user['username']} in chair number {chair_number}. your ticket id is {ticket_id}""")
 
         else:
             return('Error : card have not found or low cash')

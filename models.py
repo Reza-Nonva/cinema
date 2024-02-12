@@ -35,8 +35,6 @@ class Accounting:
         user_card = self.cursor.fetchone()
 
         if user_card:
-            print(self.wallet_balance(user_id))
-            print(amount)
             if pay_type == 0:
                 if self.wallet_balance(user_id) - amount < 0:
                     return False
@@ -475,38 +473,41 @@ class Ticket:
         free_chairs = [num for num in range(1, 51) if num not in booked_chairs]
         return(f'list of free chairs in {screen_id} screen : {free_chairs}')
     
-    def cancel_ticket(self, ticket_id):
+    def cancel_ticket(self, user:User, ticket_id):
+        if not user.isAuthenticated:
+            return("Error: User should be logged in first.")
+        
+
         self.cursor.execute(f'SELECT user_id, screen_id, chair_number FROM ticket WHERE id = {ticket_id}')
         ticket_data = self.cursor.fetchone()
 
         if not ticket_data:
-            print('Error : Ticket with this id have not found')
-            return
-        
+            return('Error : Ticket with this id have not found')
+
+        if (ticket_data[0] != user.user['id'] ):
+            return("you can't cancel this ticket")
+
         self.cursor.execute(f'SELECT price, start_time FROM screening WHERE id = {ticket_data[1]} AND start_time > NOW()')
         screen_data = self.cursor.fetchone()
 
         if not screen_data:
-            print('Error : This screen has already started')
-            return
+            return('Error : This screen has already started')
+
         
         self.cursor.execute(f'SELECT number, cvv, password FROM card_bank where user_id = {ticket_data[0]}')
         card_data = self.cursor.fetchone()
 
         if not card_data:
-            print(f'Error : User has no bank card')
-            return
+            return(f'Error : User has no bank card')
 
         price = screen_data[0] if screen_data[1] - datetime.now() > timedelta(hours=1) else screen_data[0] / 100 * 82
         accounting = Accounting(DB_obj.connection, DB_obj.cursor)
         if accounting.deposite_withdraw_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], 1, price):
-            print(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
             self.cursor.execute(f'DELETE FROM ticket WHERE id = {ticket_id}')
             self.connection.commit()
+            return(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
         else:
-            print('card is invalid')
-
-        return
+            return('card is invalid')
 
 #ticket = Ticket(DB_obj.connection, DB_obj.cursor)
 #ticket.buy_ticket(user, 9, 40)

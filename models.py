@@ -334,6 +334,24 @@ class Movie:
         self.connection.commit()
         return(f"Movie '{name}' added") 
 
+
+    def list_of_movie(self, user:User):
+        if not user.isAuthenticated:
+            return("login first")
+        if(user.user["is_admin"] == 0):
+            return("shoma dastresi nadarid")
+        
+        self.cursor.execute("SELECT id, name FROM movie")
+        result = self.cursor.fetchall()
+        text = ""
+        columns = [column[0] for column in self.cursor.description]
+        for row in result:
+            temp = dict(zip(columns, row))
+            text += (f"id: {temp['id']} ---> name:{temp['name']} \n")
+        return(text)
+
+        
+
 # movie = Movie(DB_obj.connection, DB_obj.cursor)
 # movie.add_movie('inception', 2016, 18)
 # movie.add_movie('The Shawshank Redemption', 1994, 18)
@@ -359,11 +377,13 @@ class Screen:
 
             text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
         return(text)
-    def set_movie_screening(self, movie_id, start_time, end_time, price):
+    def set_movie_screening(self, user:User, movie_id, start_time, end_time, price):
         if not user.isAuthenticated:
-            print("Error: User should be logged in first.")
-            return
+            return("Error: User should be logged in first.")
         
+        if (user.user["is_admin"] == 0):
+            return("shoma dastresi nadarid")
+
         self.cursor.execute(f"SELECT name FROM movie WHERE uuid = '{movie_id}'")
         movie_exist = self.cursor.fetchone()
 

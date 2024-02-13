@@ -27,6 +27,7 @@ admin_menu = """ ====Admin Menu=====
 +buy_ticket [screen id] [chair number]
 +cancel_ticket [ticket id]
 +add_movie [name] [year] [age range]
++list_movie
 +logout
 +dis
 """
@@ -97,6 +98,10 @@ def handle_request(user, msg:str):
         case "add_movie":
             movie = models.Movie(DB_obj.connection, DB_obj.cursor)
             return(movie.add_movie(user, msg[1], int(msg[2]), int(msg[3])))
+        
+        case "list_movie":
+            movie = models.Movie(DB_obj.connection, DB_obj.cursor)
+            return(movie.list_of_movie(user = user))
         case "logout":
             return(user.logout())
         

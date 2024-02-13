@@ -614,28 +614,28 @@ class Movie_Rate:
         num_movie_screenings = self.cursor.fetchone()[0]
         return str(num_movie_screenings)
 
-    def write_comment(self, user_id, movie_id, comment_text, parent_comment_id=None):
+    def write_comment(self, user:User, movie_id:int, comment_text, parent_comment_id=None):
+        if not user.isAuthenticated:
+            return ("please first login")
         # Create comment
-        insert_comment_query = """
-            INSERT INTO comments (user_id, movie_id, parent_comment_id, comment_text, create_date)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-        comment_data = (
-            user_id, movie_id, parent_comment_id, comment_text, datetime.now()
-        )
-        self.cursor.execute(insert_comment_query, comment_data)
-        self.connection.commit()
+        user_uuid = user.user["uuid"]
+        self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
+        movie_uuid = self.cursor.fetchone()[0]
 
+        self.cursor.execute(f"INSERT INTO comments (user_id, movie_id, parent_comment_id, comment_text, create_date) VALUES ('{user_uuid}', '{movie_uuid}', {parent_comment_id}, {comment_text}, {datetime.now()})")
+        self.connection.commit()
+        return ("ok")
         # Create a reply if the comment is a reply to an original comment
+        """
         if parent_comment_id:
-            insert_reply_query = """
+            insert_reply_query = 
                 INSERT INTO replies (comment_id, user_id, reply_text, create_date)
                 VALUES (%s, %s, %s, %s)
-            """
+            
             reply_data = (
                 parent_comment_id, user_id, comment_text, datetime.now()
             )
             self.cursor.execute(insert_reply_query, reply_data)
             self.connection.commit()
 
-        print("Comment sent successfully.")
+        print("Comment sent successfully.")"""

@@ -18,6 +18,7 @@ menu = """ ====User Menu====
 +avg_rate [movie id]
 +top_rated_movies [count]
 +count_screening [movie id]
++write_comment [movie id] [comment] [parent (optional)]
 +logout
 +dis """
     
@@ -37,6 +38,7 @@ admin_menu = """ ====Admin Menu=====
 +avg_rate [movie id]
 +top_rated_movies [count]
 +count_screening [movie id]
++write_comment [movie id] [comment] [parent (optional)]
 +logout
 +dis
 """
@@ -131,6 +133,13 @@ def handle_request(user, msg:str):
         case "count_screening":
             movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
             return(movie_rate.get_movie_screenings(int(msg[1])))
+        case "write_comment":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            if (len(msg) == 4):
+                return (movie_rate.write_comment(user, int(msg[1]), msg[2], int(msg[3])))
+            else:
+                return (movie_rate.write_comment(user, int(msg[1]), msg[2]))
+        
         case "logout":
             return(user.logout())
         

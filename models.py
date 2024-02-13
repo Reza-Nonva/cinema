@@ -161,7 +161,7 @@ class User:
 
 
 user = User(DB_obj.connection, DB_obj.cursor)
-# user.register_user('Bagher6', 'Thisis@p@ssword1', 'palahangmohammadbagher6@gmail.com', '1382-06-01', '09023241014')
+user.register_user('Bagher6', 'Thisis@p@ssword1', 'palahangmohammadbagher6@gmail.com', '1382-06-01', '09023241014')
 # user.login_user('ali', 'Thisis@p@ssword1')
 # user.change_password('Thisis@p@ssword1', 'Thisis@p@ssword2', 'Thisis@p@ssword2')
 user.login_user('Alireza2', 'Thisis@p@ssword2')
@@ -195,7 +195,7 @@ class Movie:
         return 
     
 
-movie = Movie(DB_obj.connection, DB_obj.cursor)
+# movie = Movie(DB_obj.connection, DB_obj.cursor)
 # movie.add_movie('inception', 2016, 18)
 
 
@@ -248,9 +248,9 @@ class Screen:
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
 
-screen = Screen(DB_obj.connection, DB_obj.cursor)    
-screen.show_screening(user.user)
-screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
+# screen = Screen(DB_obj.connection, DB_obj.cursor)    
+# screen.show_screening(user.user)
+# screen.set_movie_screening(1, '2024-02-06 20:00:00', '2024-02-06 21:30:00', 100)
 
 class Accounting:
     def __init__(self, connection, cursor):

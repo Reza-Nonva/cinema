@@ -32,7 +32,6 @@ class Accounting:
             return(f'{card_number} is added successfully')
 
     def deposite_withdraw_wallet(self, user_id:str, card_number, cvv2, password, pay_type, amount):
-        print(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.execute(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.fetchone()
 
@@ -383,7 +382,7 @@ class Screen:
         self.connection.commit()
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
-screen = Screen(DB_obj.connection, DB_obj.cursor)
+#screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)
 # screen.set_movie_screening('08d6c4e1-ca42-11ee-a7a0-0242ac113f02', '2024-10-10 20:00:00', '2024-02-06 21:30:00', 100)
 
@@ -466,7 +465,11 @@ class Ticket:
 
 
     def show_available_chairs(self, screen_id):
-        self.cursor.execute(f'SELECT chair_number FROM ticket WHERE screen_id = {screen_id}')
+        
+        self.cursor.execute(f"SELECT uuid from screening WHERE id = {screen_id}")
+        screen_uuid = self.cursor.fetchone()[0]
+
+        self.cursor.execute(f"SELECT chair_number FROM ticket WHERE screen_id = '{screen_uuid}'")
         empty_chairs = self.cursor.fetchall()
 
         if not empty_chairs:
@@ -481,13 +484,13 @@ class Ticket:
             return("Error: User should be logged in first.")
         
 
-        self.cursor.execute(f"SELECT user_id, screen_id, chair_number FROM ticket WHERE uuid = '{ticket_id}'")
+        self.cursor.execute(f"SELECT user_id, screen_id, chair_number FROM ticket WHERE id = '{ticket_id}'")
         ticket_data = self.cursor.fetchone()
 
         if not ticket_data:
             return('Error : Ticket with this id have not found')
 
-        if (ticket_data[0] != user.user['id'] ):
+        if (ticket_data[0] != user.user['uuid'] ):
             return("you can't cancel this ticket")
 
         self.cursor.execute(f"SELECT price, start_time FROM screening WHERE uuid = '{ticket_data[1]}' AND start_time > NOW()")
@@ -497,7 +500,7 @@ class Ticket:
             return('Error : This screen has already started')
 
         
-        self.cursor.execute(f'SELECT number, cvv, password FROM card_bank where user_id = {ticket_data[0]}')
+        self.cursor.execute(f"SELECT number, cvv, password FROM card_bank where user_id = '{ticket_data[0]}'")
         card_data = self.cursor.fetchone()
 
         if not card_data:
@@ -506,13 +509,13 @@ class Ticket:
         price = screen_data[0] if screen_data[1] - datetime.now() > timedelta(hours=1) else screen_data[0] / 100 * 82
         accounting = Accounting(DB_obj.connection, DB_obj.cursor)
         if accounting.deposite_withdraw_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], 1, price):
-            self.cursor.execute(f"DELETE FROM ticket WHERE uuid = '{ticket_id}'")
+            self.cursor.execute(f"DELETE FROM ticket WHERE id = '{ticket_id}'")
             self.connection.commit()
             return(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
         else:
             return('card is invalid')
 
-ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+#ticket = Ticket(DB_obj.connection, DB_obj.cursor)
 # ticket.buy_ticket(user, "e39db067-ca44-11ee-a7a0-0242ac113f02", 40)
 # ticket.show_available_chairs(9)
 # ticket.cancel_ticket(2)

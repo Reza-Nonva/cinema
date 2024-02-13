@@ -1,9 +1,16 @@
+from functools import wraps
 from datetime import datetime, timedelta
 from db import DB_obj
 import utils
 
-def login_required():
-    pass
+def login_required(func):
+    @wraps(func)
+    def wrapper(user ,*args, **kwargs):
+        if user.isAuthenticated:
+            return func(*args, **kwargs)
+        else:
+            return 'Error: User should be logged in first.'
+    return wrapper
 
 class Accounting:
     def __init__(self, connection, cursor):
@@ -197,7 +204,6 @@ class User:
         self.connection.commit()
         return(f"Dear {self.user['username']} you have just logged in")
         
-
     def change_profile(self, username=None, email=None, mobile_number=None):
         if not self.isAuthenticated:
             return("Error: User should be logged in first.")

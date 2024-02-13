@@ -590,19 +590,17 @@ class Movie_Rate:
         return(f"Rating added: {rating} star for movie {movie_id} by User {user.user['id']}")
 
     def calculate_average_rating(self, movie_id):
-        movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
-        self.cursor.execute(movie_check_query, (movie_id,))
-        movie_exists = self.cursor.fetchone()
+        
+        self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
+        movie_uuid = self.cursor.fetchone()[0]
 
-        if not movie_exists:
-            print(f"Error: Movie with id {movie_id} does not exist.")
-            return None
+        if not movie_uuid:
+            return(f"Error: Movie with id {movie_id} does not exist.")
 
         # Calculate the average rating for the movie
-        average_query = "SELECT AVG(rating) FROM rank WHERE movie_id = %s"
-        self.cursor.execute(average_query, (movie_id,))
+        self.cursor.execute(f"SELECT AVG(rating) FROM `rank` WHERE movie_id = '{movie_uuid}'")
         average_rating = self.cursor.fetchone()[0]
-        return average_rating
+        return str(average_rating)
 
     def top_rated_movies(self, num_movies=10):
         # Retrieve the top-rated movies based on average ratings

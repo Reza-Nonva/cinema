@@ -9,29 +9,29 @@ class Accounting:
         self.connection = connection
         self.cursor = cursor
 
-    def initial_setup_wallet(self, user:int):
-        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id={user};")
+    def initial_setup_wallet(self, user):
+        self.cursor.execute(f"SELECT * FROM wallet WHERE user_id='{user}';")
         if self.cursor.fetchone():
             return('You already have a wallet')
         else:
-            self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ({user}, 0);")
+            self.cursor.execute(f"INSERT INTO wallet(user_id, balance) VALUES ('{user}', 0);")
             self.connection.commit()
 
-    def add_card_by_user(self, user:int, card_number:str, date, cvv2:int, password):
+    def add_card_by_user(self, user:str, card_number:str, date, cvv2:int, password):
         if not utils.card_number_check(card_number):
             return(f'{card_number} is invalid card number')
         
-        self.cursor.execute(f"select number from card_bank where user_id ={user} and number={card_number};")
+        self.cursor.execute(f"select number from card_bank where user_id ='{user}' and number={card_number};")
         user_cards = self.cursor.fetchone()
         if user_cards:
             return(f'{card_number} is already added')
         else:
-            self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ({user}, {card_number}, {cvv2}, {date}, {password});")
+            self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ('{user}', {card_number}, {cvv2}, {date}, {password});")
             self.connection.commit()
             return(f'{card_number} is added successfully')
 
     def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
-        user_card = self.cursor.execute("SELECT * FROM card_bank WHERE user_id = %s AND number = %s AND cvv = %s AND password = %s", (user_id, card_number, cvv2, password))
+        user_card = self.cursor.execute(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.fetchone()
 
         if user_card:
@@ -44,12 +44,11 @@ class Accounting:
             
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             pay_hash = utils.payment_code_hash()
-
             with open('log.transaction', 'a') as f:
                 f.write(f"transiction in wallet, user_id={user_id},amount={amount},pay_date={payment_time}\n")
 
-            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = {user_id};")
-            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, {user_id});")
+            self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = '{user_id}';")
+            self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, '{user_id}');")
             self.connection.commit()
             return True
         else:
@@ -62,11 +61,11 @@ class Accounting:
         return balance
 
     def initial_plan_mode(self, user:int):
-        self.cursor.execute(f"SELECT * FROM plan WHERE user_id={user};")
+        self.cursor.execute(f"SELECT * FROM plan WHERE user_id='{user}';")
         if self.cursor.fetchone():
             return('You already have a basic plan')
         else:
-            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ('{user}', {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
             self.connection.commit()
 
     def buy_plan(self, user:int, plan_name):
@@ -94,7 +93,7 @@ class Accounting:
             self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
             self.connection.commit()
             print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
-#accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
+# accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
 # accounting.charge_wallet(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765', amount='110')
@@ -168,8 +167,8 @@ class User:
         """
             a func to setup initial wallet and plan to a new user
         """
-        self.cursor.execute(f"SELECT id FROM users WHERE username = '{username}'")
-        user_id = int(self.cursor.fetchone()[0])
+        self.cursor.execute(f"SELECT uuid FROM users WHERE username = '{username}'")
+        user_id = self.cursor.fetchone()[0]
         accounting = Accounting(DB_obj.connection, DB_obj.cursor)
         accounting.initial_setup_wallet(user = user_id)
         accounting.initial_plan_mode(user = user_id)
@@ -191,7 +190,7 @@ class User:
 
         self.isAuthenticated = True
 
-        self.cursor.execute("UPDATE users SET last_login_time = %s WHERE id = %s", (datetime.now().time() ,self.user['id']))
+        self.cursor.execute(f"UPDATE users SET last_login_time = '{datetime.now().time()}' WHERE uuid = '{self.user['uuid']}'")
         self.connection.commit()
         return(f"Dear {self.user['username']} you have just logged in")
         
@@ -208,7 +207,7 @@ class User:
                 return(f"Error: Username '{username}' is already taken. Please choose a different username.")
             else:
                 if utils.validating_username(username):
-                    self.cursor.execute("UPDATE users SET username = %s WHERE id = %s", (username, self.user['id']))
+                    self.cursor.execute(f"UPDATE users SET username = {username} WHERE uuid = '{self.user['uuid']}'")
                     self.connection.commit()
                     return(f"Dear {self.user['username']} you have just change your username")
                 else:
@@ -222,7 +221,7 @@ class User:
                 return(f"Error: Email '{email}' is already taken. Please choose a different email.")
             else:
                 if utils.validating_email(email):
-                    self.cursor.execute("UPDATE users SET email = %s WHERE id = %s", (email, self.user['id']))
+                    self.cursor.execute(f"UPDATE users SET email = {email} WHERE uuid = '{self.user['uuid']}'")
                     self.connection.commit()
                     return(f"Dear {self.user['username']} you have just change your email")
                 else:
@@ -230,7 +229,7 @@ class User:
 
         if mobile_number:
             if utils.validating_mobile_number(mobile_number):
-                self.cursor.execute("UPDATE users SET mobile_number = %s WHERE id = %s", (mobile_number, self.user['id']))
+                self.cursor.execute(f"UPDATE users SET mobile_number = {mobile_number} WHERE uuid = '{self.user['uuid']}'")
                 self.connection.commit()
                 return(f"Dear {self.user['username']} you have just change your mobile number")
             else:
@@ -247,13 +246,13 @@ class User:
         if not utils.validating_password(new_password):
             return("Error: Password should be mpre than 8 character and contain uppercase, lowercase, number and spercial signs . Please use a different password.")
             
-        self.cursor.execute("SELECT id FROM users WHERE username = %s AND password = %s", (self.user['username'], utils.hash_password(old_password)))
-        user_id = self.cursor.fetchone()
+        self.cursor.execute("SELECT uuid FROM users WHERE username = %s AND password = %s", (self.user['username'], utils.hash_password(old_password)))
+        user_uuid = self.cursor.fetchone()
 
-        if not user_id:
+        if not user_uuid:
             return('Error: username or old password is incorrect. please check and fill again.')
             
-        self.cursor.execute("UPDATE users SET password = %s WHERE id = %s", (utils.hash_password(new_password), self.user['id']))
+        self.cursor.execute("UPDATE users SET password = %s WHERE uuid = '%s'", (utils.hash_password(new_password), self.user['uuid']))
         self.connection.commit()
 
         return(f"Dear {self.user['username']} you have just change your password")
@@ -288,12 +287,17 @@ class User:
         print(self.user['username'])
 
 
-#user = User(DB_obj.connection, DB_obj.cursor)
-# user.register_user('Bagher6', 'Thisis@p@ssword1', 'palahangmohammadbagher6@gmail.com', '1382-06-01', '09023241014')
+# user = User(DB_obj.connection, DB_obj.cursor)
+# user.register_user('Yashar23', 'Thisis@p@ssword1', 'Yashar1989112@gmail.com', '1368-05-23', '09213840549')
 # user.login_user('ali', 'Thisis@p@ssword1')
 # user.change_password('Thisis@p@ssword1', 'Thisis@p@ssword2', 'Thisis@p@ssword2')
-#user.login_user('Alireza2', 'Thisis@p@ssword2')
+# user.login_user('Yashar23', 'Thisis@p@ssword1')
+
 # user.change_profile(username='Alireza2', email='fuck@thefucking.world')
+# accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
+
+# accounting.add_card_by_user(user=user.user['uuid'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
+# accounting.deposite_withdraw_wallet(user_id=user.user['uuid'], card_number='6362141809960843', cvv2='123', password='8765', amount='110000', pay_type=1)
 
 
 class Movie:
@@ -323,9 +327,9 @@ class Movie:
         return 
     
 
-#movie = Movie(DB_obj.connection, DB_obj.cursor)
+# movie = Movie(DB_obj.connection, DB_obj.cursor)
 # movie.add_movie('inception', 2016, 18)
-
+# movie.add_movie('The Shawshank Redemption', 1994, 18)
 
 class Screen:
     def __init__(self, connection, cursor):
@@ -343,7 +347,7 @@ class Screen:
         columns = [column[0] for column in self.cursor.description]
         for row in result:
             screening = dict(zip(columns, row))
-            self.cursor.execute("SELECT name FROM movie WHERE id = %s",(screening['movie_id'],))
+            self.cursor.execute("SELECT name FROM movie WHERE uuid = '%s'",(screening['movie_id'],))
             result = self.cursor.fetchone()
 
             text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
@@ -353,8 +357,9 @@ class Screen:
             print("Error: User should be logged in first.")
             return
         
-        self.cursor.execute("SELECT name FROM movie WHERE id = %s",(movie_id,))
+        self.cursor.execute(f"SELECT name FROM movie WHERE uuid = '{movie_id}'")
         movie_exist = self.cursor.fetchone()
+
         
         if not movie_exist:
             print('Error : Movie has not declared')
@@ -375,9 +380,9 @@ class Screen:
         self.connection.commit()
         print(f'{movie_exist[0]} added to screen start time : {start_time}')
 
-#screen = Screen(DB_obj.connection, DB_obj.cursor)
+screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)
-#screen.set_movie_screening(1, '2024-10-10 20:00:00', '2024-02-06 21:30:00', 100)
+# screen.set_movie_screening('08d6c4e1-ca42-11ee-a7a0-0242ac113f02', '2024-10-10 20:00:00', '2024-02-06 21:30:00', 100)
 
 
     
@@ -391,14 +396,14 @@ class Ticket:
         self.connection = connection
         self.cursor = cursor
 
-    def buy_ticket(self, user:User, screen_id:int, chair_number:int):
+    def buy_ticket(self, user:User, screen_id, chair_number:int):
         '''
             buying a ticket
         '''
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
         
-        self.cursor.execute(f"SELECT id FROM ticket WHERE chair_number = {chair_number} AND screen_id = {screen_id}")
+        self.cursor.execute(f"SELECT uuid FROM ticket WHERE chair_number = {chair_number} AND screen_id = '{screen_id}'")
         is_chair_alreay_booked = self.cursor.fetchone()
 
         if is_chair_alreay_booked:
@@ -407,16 +412,14 @@ class Ticket:
         if chair_number > 50 or chair_number < 1:
             return("Error : Chair number is out of range")
 
-        self.cursor.execute(f"""SELECT id, age_range
+        self.cursor.execute(f"""SELECT uuid, age_range
                                FROM movie
-                               WHERE id = (SELECT movie_id
+                               WHERE uuid = (SELECT movie_id
                                            FROM screening 
-                                           WHERE id = {screen_id});""")
+                                           WHERE uuid = '{screen_id}');""")
         movie_data= self.cursor.fetchone()
-        
-        self.cursor.execute(f"SELECT price FROM screening WHERE id = {screen_id} AND start_time > NOW();")
+        self.cursor.execute(f"SELECT price FROM screening WHERE uuid = '{screen_id}' AND start_time > NOW();")
         screen_price = self.cursor.fetchone()[0]
-
         if not screen_price:
             return('Error : Screen start time has passed.')
 
@@ -439,7 +442,6 @@ class Ticket:
 
         transition = Accounting(connection=self.connection, cursor=self.cursor)
         if transition.deposite_withdraw_wallet(user.user['id'], card_data[0], card_data[1], card_data[2], 0, screen_price):
-
             ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
             ticket_data = (
                 user.user['id'],
@@ -478,7 +480,7 @@ class Ticket:
             return("Error: User should be logged in first.")
         
 
-        self.cursor.execute(f'SELECT user_id, screen_id, chair_number FROM ticket WHERE id = {ticket_id}')
+        self.cursor.execute(f"SELECT user_id, screen_id, chair_number FROM ticket WHERE uuid = '{ticket_id}'")
         ticket_data = self.cursor.fetchone()
 
         if not ticket_data:
@@ -487,7 +489,7 @@ class Ticket:
         if (ticket_data[0] != user.user['id'] ):
             return("you can't cancel this ticket")
 
-        self.cursor.execute(f'SELECT price, start_time FROM screening WHERE id = {ticket_data[1]} AND start_time > NOW()')
+        self.cursor.execute(f"SELECT price, start_time FROM screening WHERE uuid = '{ticket_data[1]}' AND start_time > NOW()")
         screen_data = self.cursor.fetchone()
 
         if not screen_data:
@@ -503,14 +505,14 @@ class Ticket:
         price = screen_data[0] if screen_data[1] - datetime.now() > timedelta(hours=1) else screen_data[0] / 100 * 82
         accounting = Accounting(DB_obj.connection, DB_obj.cursor)
         if accounting.deposite_withdraw_wallet(ticket_data[0], card_data[0], card_data[1], card_data[2], 1, price):
-            self.cursor.execute(f'DELETE FROM ticket WHERE id = {ticket_id}')
+            self.cursor.execute(f"DELETE FROM ticket WHERE uuid = '{ticket_id}'")
             self.connection.commit()
             return(f'Ticket with has canceled and money returend to your card with {card_data[0]}')
         else:
             return('card is invalid')
 
-#ticket = Ticket(DB_obj.connection, DB_obj.cursor)
-#ticket.buy_ticket(user, 9, 40)
+ticket = Ticket(DB_obj.connection, DB_obj.cursor)
+# ticket.buy_ticket(user, "e39db067-ca44-11ee-a7a0-0242ac113f02", 40)
 # ticket.show_available_chairs(9)
 # ticket.cancel_ticket(2)
 
@@ -527,7 +529,7 @@ class Movie_Rate:
             return
 
         # Check the user exists
-        user_check_query = "SELECT id FROM users WHERE id = %s"
+        user_check_query = "SELECT id FROM users WHERE uuid = '%s'"
         self.cursor.execute(user_check_query, (user_id,))
         user_exists = self.cursor.fetchone()
 
@@ -536,7 +538,7 @@ class Movie_Rate:
             return
 
         # Check if the movie exists
-        movie_check_query = "SELECT id FROM movies WHERE id = %s"
+        movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
         self.cursor.execute(movie_check_query, (movie_id,))
         movie_exists = self.cursor.fetchone()
 
@@ -567,7 +569,7 @@ class Movie_Rate:
         print(f"Rating added: {rating} star for movie {movie_id} by User {user_id}")
 
     def calculate_average_rating(self, movie_id):
-        movie_check_query = "SELECT id FROM movies WHERE id = %s"
+        movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
         self.cursor.execute(movie_check_query, (movie_id,))
         movie_exists = self.cursor.fetchone()
 

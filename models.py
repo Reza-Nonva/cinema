@@ -308,6 +308,11 @@ class Movie:
         self.cursor = cursor
     
     def add_movie(self, user:User, name:str, year:int, age_range:int):
+        if not user.isAuthenticated:
+            return("login first")
+        if(user.user["is_admin"] == 0):
+            return("shoma dastresi nadarid")
+        
         self.name = name
         self.year = year
         self.age_range = age_range
@@ -316,8 +321,8 @@ class Movie:
         existing_movie = self.cursor.fetchone()
 
         if existing_movie:
-            print(f"Error: Movie '{Movie}' is already added.")
-            return
+            return(f"Error: Movie '{Movie}' is already added.")
+        
 
         insert_query = """
             INSERT INTO movie (name, year, age_range) VALUES (%s, %s, %s)
@@ -325,9 +330,7 @@ class Movie:
         movie_data = (name, year, age_range)
         self.cursor.execute(insert_query, movie_data)
         self.connection.commit()
-        print(f"Movie '{name}' added")
-        return 
-    
+        return(f"Movie '{name}' added") 
 
 # movie = Movie(DB_obj.connection, DB_obj.cursor)
 # movie.add_movie('inception', 2016, 18)

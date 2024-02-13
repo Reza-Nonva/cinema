@@ -26,6 +26,7 @@ admin_menu = """ ====Admin Menu=====
 +show_available_chairs [screen id]
 +buy_ticket [screen id] [chair number]
 +cancel_ticket [ticket id]
++add_movie [name] [year] [age range]
 +logout
 +dis
 """
@@ -39,7 +40,6 @@ FORMAT = 'UTF-8'
 def handle_request(user, msg:str):
     #TODO: 1. user can edit just once of profile information
     msg = msg.split()
-    #print(msg)
     global menu    
     global admin_menu
     global welcome_message
@@ -94,6 +94,9 @@ def handle_request(user, msg:str):
             ticket = models.Ticket(DB_obj.connection, DB_obj.cursor)
             return(ticket.cancel_ticket(user, int(msg[1])))
 
+        case "add_movie":
+            movie = models.Movie(DB_obj.connection, DB_obj.cursor)
+            return(movie.add_movie(user, msg[1], int(msg[2]), int(msg[3])))
         case "logout":
             return(user.logout())
         

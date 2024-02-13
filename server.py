@@ -2,21 +2,10 @@ import socket
 import threading
 import models
 from db import DB_obj
+import argparse
 
 
-HEADER = 1024
-PORT = 12345
-SERVER = socket.gethostbyname(socket.gethostname())
-ADDR = (SERVER, PORT)
-FORMAT = 'UTF-8'
-DISCONNECT_MESSAGE = "!DISCONNECT"
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind(ADDR)
-
-menu = """+register [username] [password] [email] [birthdate] [mobile number]
-+login [username] [password] 
+menu = """ ====User Menu====
 +change_profile [username or email or mobile_number] [new value]         
 +change_password [old password] [new password] [confirm new password]
 +show_screening_movie
@@ -28,17 +17,41 @@ menu = """+register [username] [password] [email] [birthdate] [mobile number]
 +logout
 +dis """
     
+admin_menu = """ ====Admin Menu=====
++change_profile [username or email or mobile_number] [new value]         
++change_password [old password] [new password] [confirm new password]
++show_screening_movie
++add_card [card number] [date] [cvv2] [password]
++charge_wallet [card nummber] [amout]
++show_available_chairs [screen id]
++buy_ticket [screen id] [chair number]
++cancel_ticket [ticket id]
++logout
++dis
+"""
+welcome_message = """you must login or register first
+>+login [username] [password]
+>+register [username] [password] [email] [birthdate] [mobile number]
+"""
 
+FORMAT = 'UTF-8' 
 
 def handle_request(user, msg:str):
     #TODO: 1. user can edit just once of profile information
     msg = msg.split()
     #print(msg)
     global menu    
-    
+    global admin_menu
+    global welcome_message
     match msg[0]:
         case "menu":
-            return (menu)
+            if user.isAuthenticated :
+                if user.user["is_admin"] == 1:
+                    return(admin_menu)
+                else:
+                    return(menu)
+            else:
+                return(welcome_message)
         case "register":
             return (user.register_user(username=msg[1], password=msg[2], email = msg[3], birthdate=msg[4], mobile_number=msg[5]))
         case "login":
@@ -64,7 +77,7 @@ def handle_request(user, msg:str):
             user_id = user.user
             if user_id is None:
                 return("please login first")
-            return (accounting.add_card_by_user(user = user_id["id"], card_number=msg[1], date=msg[2], cvv2=int(msg[3]), password = int(msg[4])))
+            return (accounting.add_card_by_user(user = user_id["uuid"], card_number=msg[1], date=msg[2], cvv2=int(msg[3]), password = int(msg[4])))
         
         case "charge_wallet":
             return(user.charge_wallet(msg[1], msg[2]))
@@ -88,6 +101,8 @@ def handle_request(user, msg:str):
             return("invalid command, run menu to see commands")
     
 def handle_client(conn, addr):
+    global FORMAT
+    DISCONNECT_MESSAGE = "!DISCONNECT"
     print(f"[NEW CONNECTION] {addr} connected.")
     connected = True
     user = models.User(DB_obj.connection, DB_obj.cursor)
@@ -103,16 +118,43 @@ def handle_client(conn, addr):
 
     conn.close()
 
+def create_admin():
+    username = input("username: ")
+    password = input("password: ")
+    email = input("email: ")
+    birthdate = input("birthdate(y-m-d): ")
+    mobile_number = input("mobile number: ")
+    user = models.User(DB_obj.connection, DB_obj.cursor)
+    return(user.register_user(username=username, password=password, email=email, birthdate=birthdate, mobile_number= mobile_number, is_admin=1))
+
 
 def start():
+    global FORMAT
+    HEADER = 1024
+    PORT = 12345
+    SERVER = socket.gethostbyname(socket.gethostname())
+    ADDR = (SERVER, PORT)
+       
+    
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(ADDR)
+    
     server.listen()
+    
     print(f"[LISTENING] Server is listening on {SERVER}")
+    
     while True:
         conn, addr = server.accept()
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
-
-print("[STARTING] server is starting...")
-start()
+parser = argparse.ArgumentParser()
+parser.add_argument('--createadmin', action="store_true")
+if(parser.parse_args().createadmin): 
+    print(create_admin())
+else:
+    print("[STARTING] server is starting...")
+    start()

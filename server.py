@@ -6,9 +6,7 @@ import argparse
 
 
 
-menu = """+register [username] [password] [email] [birthdate] [mobile number]
-+login [username] [password] 
-+change_profile [username or email or mobile_number] [new value]         
+menu = """+change_profile [username or email or mobile_number] [new value]         
 +change_password [old password] [new password] [confirm new password]
 +show_screening_movie
 +add_card [card number] [date] [cvv2] [password]
@@ -22,9 +20,9 @@ menu = """+register [username] [password] [email] [birthdate] [mobile number]
 admin_menu = """
 admin menu
 """
-welcome_message = """
-you must first login
-login [username] [password]
+welcome_message = """you must login or register first
++login [username] [password]
++register [username] [password] [email] [birthdate] [mobile number]
 """
 
 FORMAT = 'UTF-8' 

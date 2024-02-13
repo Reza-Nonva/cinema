@@ -208,7 +208,7 @@ class User:
                 return(f"Error: Username '{username}' is already taken. Please choose a different username.")
             else:
                 if utils.validating_username(username):
-                    self.cursor.execute(f"UPDATE users SET username = {username} WHERE uuid = '{self.user['uuid']}'")
+                    self.cursor.execute(f"UPDATE users SET username = '{username}' WHERE uuid = '{self.user['uuid']}'")
                     self.connection.commit()
                     return(f"Dear {self.user['username']} you have just change your username")
                 else:
@@ -222,7 +222,7 @@ class User:
                 return(f"Error: Email '{email}' is already taken. Please choose a different email.")
             else:
                 if utils.validating_email(email):
-                    self.cursor.execute(f"UPDATE users SET email = {email} WHERE uuid = '{self.user['uuid']}'")
+                    self.cursor.execute(f"UPDATE users SET email = '{email}' WHERE uuid = '{self.user['uuid']}'")
                     self.connection.commit()
                     return(f"Dear {self.user['username']} you have just change your email")
                 else:
@@ -230,7 +230,7 @@ class User:
 
         if mobile_number:
             if utils.validating_mobile_number(mobile_number):
-                self.cursor.execute(f"UPDATE users SET mobile_number = {mobile_number} WHERE uuid = '{self.user['uuid']}'")
+                self.cursor.execute(f"UPDATE users SET mobile_number = '{mobile_number}' WHERE uuid = '{self.user['uuid']}'")
                 self.connection.commit()
                 return(f"Dear {self.user['username']} you have just change your mobile number")
             else:
@@ -253,7 +253,7 @@ class User:
         if not user_uuid:
             return('Error: username or old password is incorrect. please check and fill again.')
             
-        self.cursor.execute("UPDATE users SET password = %s WHERE uuid = '%s'", (utils.hash_password(new_password), self.user['uuid']))
+        self.cursor.execute(f"UPDATE users SET password = '{utils.hash_password(new_password)}' WHERE uuid = '{self.user['uuid']}'")
         self.connection.commit()
 
         return(f"Dear {self.user['username']} you have just change your password")

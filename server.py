@@ -14,6 +14,11 @@ menu = """ ====User Menu====
 +show_available_chairs [screen id]
 +buy_ticket [screen id] [chair number]
 +cancel_ticket [ticket id]
++rate_movie [movie id] [rating]
++avg_rate [movie id]
++top_rated_movies [count]
++count_screening [movie id]
++write_comment [movie id] [comment] [parent (optional)]
 +logout
 +dis """
     
@@ -29,12 +34,20 @@ admin_menu = """ ====Admin Menu=====
 +add_movie [name] [year] [age range]
 +list_movie
 +add_screen [movie id] [start time(y-m-d h-m-s)] [end time(y-m-d h-m-s)] [price]
++rate_movie [movie id] [rating]
++avg_rate [movie id]
++top_rated_movies [count]
++count_screening [movie id]
++write_comment [movie id] [comment] [parent (optional)]
 +logout
 +dis
 """
 welcome_message = """you must login or register first
->+login [username] [password]
->+register [username] [password] [email] [birthdate] [mobile number]
++login [username] [password]
++register [username] [password] [email] [birthdate] [mobile number]
++avg_rate [movie id]
++top_rated_movies [count]
++count_screening [movie id]
 """
 
 FORMAT = 'UTF-8' 
@@ -107,8 +120,32 @@ def handle_request(user, msg:str):
         case "add_screen":
             screen = models.Screen(DB_obj.connection, DB_obj.cursor)
             return(screen.set_movie_screening(user= user, movie_id=int(msg[1]), start_time=msg[2]+" "+msg[3],end_time=msg[4] + " " +msg[5], price=int(msg[6])))
+        case "rate_movie":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.rate_movie(user, int(msg[1]), int(msg[2])))
+        
+        case "avg_rate":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.calculate_average_rating(int(msg[1])))
+
+
+        case "top_rated_movies":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.top_rated_movies(int(msg[1])))
+        
+        case "count_screening":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.get_movie_screenings(int(msg[1])))
+        case "write_comment":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            if (len(msg) == 4):
+                return (movie_rate.write_comment(user, int(msg[1]), msg[2], int(msg[3])))
+            else:
+                return (movie_rate.write_comment(user, int(msg[1]), msg[2]))
+        
         case "logout":
             return(user.logout())
+        
         
         case _:
             return("invalid command, run menu to see commands")

@@ -472,7 +472,7 @@ class Ticket:
         empty_chairs = self.cursor.fetchall()
 
         if not empty_chairs:
-            return(f'')
+            return(f'All the chairs are availbe from number 1 to 50')
         
         booked_chairs = set(num[0] for num in empty_chairs)
         free_chairs = [num for num in range(1, 51) if num not in booked_chairs]

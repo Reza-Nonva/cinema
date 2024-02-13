@@ -5,8 +5,8 @@ from db import DB_obj
 import argparse
 
 
-
-menu = """+change_profile [username or email or mobile_number] [new value]         
+menu = """ ====User Menu====
++change_profile [username or email or mobile_number] [new value]         
 +change_password [old password] [new password] [confirm new password]
 +show_screening_movie
 +add_card [card number] [date] [cvv2] [password]
@@ -17,12 +17,21 @@ menu = """+change_profile [username or email or mobile_number] [new value]
 +logout
 +dis """
     
-admin_menu = """
-admin menu
+admin_menu = """ ====Admin Menu=====
++change_profile [username or email or mobile_number] [new value]         
++change_password [old password] [new password] [confirm new password]
++show_screening_movie
++add_card [card number] [date] [cvv2] [password]
++charge_wallet [card nummber] [amout]
++show_available_chairs [screen id]
++buy_ticket [screen id] [chair number]
++cancel_ticket [ticket id]
++logout
++dis
 """
 welcome_message = """you must login or register first
-+login [username] [password]
-+register [username] [password] [email] [birthdate] [mobile number]
+>+login [username] [password]
+>+register [username] [password] [email] [birthdate] [mobile number]
 """
 
 FORMAT = 'UTF-8' 

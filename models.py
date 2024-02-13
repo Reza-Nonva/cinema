@@ -307,7 +307,7 @@ class Movie:
         self.connection = connection
         self.cursor = cursor
     
-    def add_movie(self, name:str, year:int, age_range:int):
+    def add_movie(self, user:User, name:str, year:int, age_range:int):
         self.name = name
         self.year = year
         self.age_range = age_range
@@ -385,9 +385,6 @@ class Screen:
 #screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)
 # screen.set_movie_screening('08d6c4e1-ca42-11ee-a7a0-0242ac113f02', '2024-10-10 20:00:00', '2024-02-06 21:30:00', 100)
-
-
-    
 
 
 class Ticket:

@@ -1,5 +1,7 @@
 import socket
 import threading
+import os 
+
 
 HEADER = 1024
 PORT = 12345
@@ -15,11 +17,12 @@ def send(msg):
     message = msg.encode(FORMAT)
     client.send(message)
 
-def receive():
+def receive(): 
     while True:
         try:
             msg = client.recv(HEADER).decode(FORMAT)
             if msg:
+                os.system('clear')
                 print(msg)
         except Exception as e:
             print(f"Error: {e}")

@@ -14,6 +14,7 @@ menu = """ ====User Menu====
 +show_available_chairs [screen id]
 +buy_ticket [screen id] [chair number]
 +cancel_ticket [ticket id]
++rate_movie [movie id] [rating]
 +logout
 +dis """
     
@@ -110,6 +111,9 @@ def handle_request(user, msg:str):
         case "logout":
             return(user.logout())
         
+        case "rate_movie":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.rate_movie(user, int(msg[1]), int(msg[2])))
         case _:
             return("invalid command, run menu to see commands")
     

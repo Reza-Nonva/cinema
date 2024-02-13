@@ -548,51 +548,46 @@ class Movie_Rate:
         self.connection = connection
         self.cursor = cursor
 
-    def rate_movie(self, user_id, movie_id, rating):
+    def rate_movie(self, user:User, movie_id, rating):
+        if not user.isAuthenticated:
+            return ("please first login")
         # Validate the rating
         if not (1 <= rating <= 5):
-            print("Error: Rate should be between 1 and 5")
-            return
+            return("Error: Rate should be between 1 and 5")
 
         # Check the user exists
-        user_check_query = "SELECT id FROM users WHERE uuid = '%s'"
-        self.cursor.execute(user_check_query, (user_id,))
-        user_exists = self.cursor.fetchone()
+        #user_check_query = "SELECT id FROM users WHERE uuid = '%s'"
+        #self.cursor.execute(f"SELECT id FROM users WHERE uuid = '%s'")
+        #user_exists = self.cursor.fetchone()
 
-        if not user_exists:
-            print(f"Error: User with id {user_id} does not exist.")
-            return
+        #if not user_exists:
+        #    print(f"Error: User with id {user_id} does not exist.")
+        #    return
 
         # Check if the movie exists
-        movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
-        self.cursor.execute(movie_check_query, (movie_id,))
-        movie_exists = self.cursor.fetchone()
+        #movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
+        self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
+        movie_uuid = self.cursor.fetchone()[0]
 
-        if not movie_exists:
-            print(f"Error: Movie with id {movie_id} does not exist.")
-            return
+        if not movie_uuid:
+            return(f"Error: Movie with id {movie_id} does not exist.")
 
         # Check if the user has already rated the movie
-        check_query = "SELECT id FROM rank WHERE user_id = %s AND movie_id = %s"
-        self.cursor.execute(check_query, (user_id, movie_id))
+        print(f"SELECT id FROM `rank` WHERE user_id = '{user.user['uuid']}' AND movie_id = '{movie_uuid}'")
+        self.cursor.execute(f"SELECT id FROM `rank` WHERE user_id = '{user.user['uuid']}' AND movie_id = '{movie_uuid}'")
         existing_rank = self.cursor.fetchone()
 
         if existing_rank:
-            print("Error: You have already rated this movie.")
-            return
+            return("Error: You have already rated this movie.")
 
         # Insert the new rating
-        insert_query = ("INSERT INTO rank (USER_ID, MOVIE_ID, RATING)"
+        insert_query = ("INSERT INTO rank (rating, movie_id, user_id)"
                         " VALUES (%s, %s, %s)")
-
-        rank_data = (
-            user_id,
-            movie_id,
-            rating
-        )
-        self.cursor.execute(insert_query, rank_data)
+        #
+    
+        self.cursor.execute(f"INSERT INTO `rank` (rating, movie_id, user_id)VALUES ({rating}, '{movie_uuid}', '{user.user['uuid']}')")
         self.connection.commit()
-        print(f"Rating added: {rating} star for movie {movie_id} by User {user_id}")
+        return(f"Rating added: {rating} star for movie {movie_id} by User {user.user['id']}")
 
     def calculate_average_rating(self, movie_id):
         movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"

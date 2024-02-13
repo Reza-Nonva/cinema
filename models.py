@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 from db import DB_obj
 import utils
 
-
+def login_required():
+    pass
 
 class Accounting:
     def __init__(self, connection, cursor):
@@ -284,7 +285,8 @@ class User:
             else:
                 return("somthing went wrong!")
     def __str__(self):
-        if not user.isAuthenticated:
+
+        if not self.isAuthenticated:
             return('You are not logged in')
         print(self.user['username'])
 
@@ -470,7 +472,7 @@ class Ticket:
         empty_chairs = self.cursor.fetchall()
 
         if not empty_chairs:
-            return('Error : this screen id doesn\'t exist')
+            return(f'')
         
         booked_chairs = set(num[0] for num in empty_chairs)
         free_chairs = [num for num in range(1, 51) if num not in booked_chairs]

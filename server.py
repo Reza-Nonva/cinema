@@ -43,8 +43,11 @@ admin_menu = """ ====Admin Menu=====
 +dis
 """
 welcome_message = """you must login or register first
->+login [username] [password]
->+register [username] [password] [email] [birthdate] [mobile number]
++login [username] [password]
++register [username] [password] [email] [birthdate] [mobile number]
++avg_rate [movie id]
++top_rated_movies [count]
++count_screening [movie id]
 """
 
 FORMAT = 'UTF-8' 

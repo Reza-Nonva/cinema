@@ -452,8 +452,8 @@ class Ticket:
             self.connection.commit()
             self.cursor.execute(f"""SELECT id
                                     FROM ticket
-                                    WHERE user_id = {user.user['id']} AND
-                                    screen_id= {screen_id} AND
+                                    WHERE user_id = '{user.user['uuid']}' AND
+                                    screen_id= '{screen_id}' AND
                                     chair_number = {chair_number}
                                     ORDER BY id DESC
                                     LIMIT 1 """)

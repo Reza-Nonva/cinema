@@ -17,6 +17,7 @@ menu = """ ====User Menu====
 +rate_movie [movie id] [rating]
 +avg_rate [movie id]
 +top_rated_movies [count]
++count_screening [movie id]
 +logout
 +dis """
     
@@ -35,6 +36,7 @@ admin_menu = """ ====Admin Menu=====
 +rate_movie [movie id] [rating]
 +avg_rate [movie id]
 +top_rated_movies [count]
++count_screening [movie id]
 +logout
 +dis
 """
@@ -126,6 +128,9 @@ def handle_request(user, msg:str):
             movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
             return(movie_rate.top_rated_movies(int(msg[1])))
         
+        case "count_screening":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.get_movie_screenings(int(msg[1])))
         case "logout":
             return(user.logout())
         

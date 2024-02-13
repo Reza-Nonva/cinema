@@ -584,7 +584,7 @@ class Movie_Rate:
         average_rating = self.cursor.fetchone()[0]
         return str(average_rating)
 
-    def top_rated_movies(self, num_movies=10):
+    def top_rated_movies(self, num_movies):
         # Retrieve the top-rated movies based on average ratings
         top_rated_query = """
             SELECT m.id, m.name, AVG(r.rating) as average_rating
@@ -607,15 +607,12 @@ class Movie_Rate:
 
     def get_movie_screenings(self, movie_id):
         # Retrieve the number of screenings for a specific movie
-        movie_screenings_query = """
-            SELECT COUNT(*) as num_screenings
-            FROM screening
-            WHERE movie_id = %s
-        """
+        self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
+        movie_uuid = self.cursor.fetchone()[0]
 
-        self.cursor.execute(movie_screenings_query, (movie_id,))
+        self.cursor.execute(f"SELECT COUNT(*) as num_screenings FROM screening WHERE movie_id = '{movie_uuid}'")
         num_movie_screenings = self.cursor.fetchone()[0]
-        return num_movie_screenings
+        return str(num_movie_screenings)
 
     def write_comment(self, user_id, movie_id, comment_text, parent_comment_id=None):
         # Create comment

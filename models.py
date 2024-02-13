@@ -377,14 +377,13 @@ class Screen:
 
             text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
         return(text)
-    def set_movie_screening(self, user:User, movie_id, start_time, end_time, price):
+    def set_movie_screening(self, user:User, movie_id:int, start_time, end_time, price):
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
-        
         if (user.user["is_admin"] == 0):
             return("shoma dastresi nadarid")
 
-        self.cursor.execute(f"SELECT name FROM movie WHERE uuid = '{movie_id}'")
+        self.cursor.execute(f"SELECT name FROM movie WHERE id = '{movie_id}'")
         movie_exist = self.cursor.fetchone()
 
         
@@ -395,9 +394,10 @@ class Screen:
         insert_query = """
             INSERT INTO screening (movie_id, start_time, end_time, price) VALUES (%s, %s, %s, %s)
         """
-
+        self.cursor.execute(f"SELECT uuid from movie WHERE id = {movie_id}")
+        movie_uuid = self.cursor.fetchone()[0]
         screening_data = (
-            movie_id,
+            movie_uuid,
             start_time,
             end_time,
             price
@@ -405,7 +405,7 @@ class Screen:
 
         self.cursor.execute(insert_query, screening_data)
         self.connection.commit()
-        print(f'{movie_exist[0]} added to screen start time : {start_time}')
+        return(f'{movie_exist[0]} added to screen start time : {start_time}')
 
 #screen = Screen(DB_obj.connection, DB_obj.cursor)
 # screen.show_screening(user.user)

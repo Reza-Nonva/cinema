@@ -68,7 +68,7 @@ def handle_request(user, msg:str):
             user_id = user.user
             if user_id is None:
                 return("please login first")
-            return (accounting.add_card_by_user(user = user_id["id"], card_number=msg[1], date=msg[2], cvv2=int(msg[3]), password = int(msg[4])))
+            return (accounting.add_card_by_user(user = user_id["uuid"], card_number=msg[1], date=msg[2], cvv2=int(msg[3]), password = int(msg[4])))
         
         case "charge_wallet":
             return(user.charge_wallet(msg[1], msg[2]))

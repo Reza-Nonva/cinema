@@ -26,11 +26,13 @@ class Accounting:
         if user_cards:
             return(f'{card_number} is already added')
         else:
+            print(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ('{user}', {card_number}, {cvv2}, {date}, {password});")
             self.cursor.execute(f"INSERT INTO card_bank(user_id, number, cvv, date, password) VALUES ('{user}', {card_number}, {cvv2}, {date}, {password});")
             self.connection.commit()
             return(f'{card_number} is added successfully')
 
-    def deposite_withdraw_wallet(self, user_id, card_number, cvv2, password, pay_type, amount):
+    def deposite_withdraw_wallet(self, user_id:str, card_number, cvv2, password, pay_type, amount):
+        print(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.execute(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.fetchone()
 
@@ -45,7 +47,7 @@ class Accounting:
             payment_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
-                f.write(f"transiction in wallet, user_id={user_id},amount={amount},pay_date={payment_time}\n")
+                f.write(f"transiction in wallet, user_id='{user_id}',amount={amount},pay_date={payment_time}\n")
 
             self.cursor.execute(f"UPDATE wallet SET balance = balance + {amount} WHERE user_id = '{user_id}';")
             self.cursor.execute(f"INSERT INTO wallet_transaction(amount, payment_code, card_id, date, pay_type, user_id) VALUES ({amount}, {pay_hash}, {card_number}, '{payment_time}', {pay_type}, '{user_id}');")
@@ -54,8 +56,8 @@ class Accounting:
         else:
             return False
  
-    def wallet_balance(self, user:int):
-        balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id={user}")
+    def wallet_balance(self, user:str):
+        balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id='{user}'")
         balance = self.cursor.fetchone()[0]
         self.connection.commit()
         return balance
@@ -272,12 +274,12 @@ class User:
         if card_user_detail is None:
             return("the card is not added to your wallet")
         
-        elif card_user_detail[1] != self.user["id"]:
+        elif card_user_detail[2] != self.user["uuid"]:
             return("The entrance card number is not for you")
         
-        elif card_user_detail[1] == self.user["id"]:
+        elif card_user_detail[2] == self.user["uuid"]:
             transaction = Accounting(DB_obj.connection, DB_obj.cursor)
-            answer = transaction.deposite_withdraw_wallet(self.user["id"], card_user_detail[2], card_user_detail[3], card_user_detail[5], 1, amount)
+            answer = transaction.deposite_withdraw_wallet(self.user["uuid"], card_user_detail[3], card_user_detail[4], card_user_detail[6], 1, amount)
             if answer:
                 return("you wallet charged succesfully")
             else:
@@ -348,7 +350,7 @@ class Screen:
         columns = [column[0] for column in self.cursor.description]
         for row in result:
             screening = dict(zip(columns, row))
-            self.cursor.execute("SELECT name FROM movie WHERE uuid = '%s'",(screening['movie_id'],))
+            self.cursor.execute(f"SELECT name FROM movie WHERE uuid = '{screening['movie_id']}'")
             result = self.cursor.fetchone()
 
             text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
@@ -404,7 +406,10 @@ class Ticket:
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
         
-        self.cursor.execute(f"SELECT uuid FROM ticket WHERE chair_number = {chair_number} AND screen_id = '{screen_id}'")
+        self.cursor.execute(f"SELECT uuid from screening WHERE id = {screen_id}")
+        screen_uuid = self.cursor.fetchone()[0]
+        
+        self.cursor.execute(f"SELECT uuid FROM ticket WHERE chair_number = {chair_number} AND screen_id = '{screen_uuid}'")
         is_chair_alreay_booked = self.cursor.fetchone()
 
         if is_chair_alreay_booked:
@@ -417,10 +422,11 @@ class Ticket:
                                FROM movie
                                WHERE uuid = (SELECT movie_id
                                            FROM screening 
-                                           WHERE uuid = '{screen_id}');""")
+                                           WHERE id = {screen_id});""")
         movie_data= self.cursor.fetchone()
-        self.cursor.execute(f"SELECT price FROM screening WHERE uuid = '{screen_id}' AND start_time > NOW();")
+        self.cursor.execute(f"SELECT price FROM screening WHERE id = {screen_id} AND start_time > NOW();")
         screen_price = self.cursor.fetchone()[0]
+        
         if not screen_price:
             return('Error : Screen start time has passed.')
 
@@ -432,7 +438,7 @@ class Ticket:
         if (movie_data[1] > age):
             return("Error : This movie is not suit for you.")
     
-        self.cursor.execute(f"SELECT number, cvv, password FROM card_bank where user_id = {user.user['id']}")
+        self.cursor.execute(f"SELECT number, cvv, password FROM card_bank where user_id = '{user.user['uuid']}'")
         card_data = self.cursor.fetchone()
 
         if not card_data:
@@ -442,24 +448,18 @@ class Ticket:
             screen_price = screen_price / 2
 
         transition = Accounting(connection=self.connection, cursor=self.cursor)
-        if transition.deposite_withdraw_wallet(user.user['id'], card_data[0], card_data[1], card_data[2], 0, screen_price):
-            ticket_query = "INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES (%s, %s, %s)"
-            ticket_data = (
-                user.user['id'],
-                screen_id,
-                chair_number,
-            )
-            self.cursor.execute(ticket_query, ticket_data)
+        if transition.deposite_withdraw_wallet(user.user['uuid'], card_data[0], card_data[1], card_data[2], 0, screen_price):
+            self.cursor.execute(f"INSERT INTO ticket (user_id ,screen_id ,chair_number) VALUES ('{user.user['uuid']}', '{screen_uuid}', {chair_number})")
             self.connection.commit()
             self.cursor.execute(f"""SELECT id
                                     FROM ticket
                                     WHERE user_id = '{user.user['uuid']}' AND
-                                    screen_id= '{screen_id}' AND
+                                    screen_id= '{screen_uuid}' AND
                                     chair_number = {chair_number}
                                     ORDER BY id DESC
                                     LIMIT 1 """)
             ticket_id = self.cursor.fetchone()[0]
-            return(f""""you bought a ticket with for {user.user['username']} in chair number {chair_number}. your ticket id is {ticket_id}""")
+            return(f"""you bought a ticket with for {user.user['username']} in chair number {chair_number}. your ticket id is {ticket_id}""")
 
         else:
             return('Error : card have not found or low cash')

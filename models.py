@@ -555,36 +555,18 @@ class Movie_Rate:
         if not (1 <= rating <= 5):
             return("Error: Rate should be between 1 and 5")
 
-        # Check the user exists
-        #user_check_query = "SELECT id FROM users WHERE uuid = '%s'"
-        #self.cursor.execute(f"SELECT id FROM users WHERE uuid = '%s'")
-        #user_exists = self.cursor.fetchone()
-
-        #if not user_exists:
-        #    print(f"Error: User with id {user_id} does not exist.")
-        #    return
-
-        # Check if the movie exists
-        #movie_check_query = "SELECT id FROM movies WHERE uuid = '%s'"
         self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
         movie_uuid = self.cursor.fetchone()[0]
 
         if not movie_uuid:
             return(f"Error: Movie with id {movie_id} does not exist.")
 
-        # Check if the user has already rated the movie
-        print(f"SELECT id FROM `rank` WHERE user_id = '{user.user['uuid']}' AND movie_id = '{movie_uuid}'")
         self.cursor.execute(f"SELECT id FROM `rank` WHERE user_id = '{user.user['uuid']}' AND movie_id = '{movie_uuid}'")
         existing_rank = self.cursor.fetchone()
 
         if existing_rank:
             return("Error: You have already rated this movie.")
 
-        # Insert the new rating
-        insert_query = ("INSERT INTO rank (rating, movie_id, user_id)"
-                        " VALUES (%s, %s, %s)")
-        #
-    
         self.cursor.execute(f"INSERT INTO `rank` (rating, movie_id, user_id)VALUES ({rating}, '{movie_uuid}', '{user.user['uuid']}')")
         self.connection.commit()
         return(f"Rating added: {rating} star for movie {movie_id} by User {user.user['id']}")
@@ -605,17 +587,23 @@ class Movie_Rate:
     def top_rated_movies(self, num_movies=10):
         # Retrieve the top-rated movies based on average ratings
         top_rated_query = """
-            SELECT movies.id, AVG(rank.rating) as average_rating
-            FROM movies
-            JOIN rank ON movies.id = rank.movie_id
-            GROUP BY rank.movie_id, movies.id
+            SELECT m.id, m.name, AVG(r.rating) as average_rating
+            FROM movie m
+            JOIN `rank` r ON m.uuid = r.movie_id
+            GROUP BY m.id
             ORDER BY average_rating DESC
             LIMIT %s
         """
         self.cursor.execute(top_rated_query, (num_movies,))
-        top_rated_movies = self.cursor.fetchall()
+        result = self.cursor.fetchall()
+        text = ""
+        columns = [column[0] for column in self.cursor.description]
+        for row in result:
+            temp = dict(zip(columns, row))
+            result = self.cursor.fetchone()
 
-        return top_rated_movies
+            text += (f"id: {temp['id']} ---> name:{temp['name']} -- rate:{temp['average_rating']} \n")
+        return(text)
 
     def get_movie_screenings(self, movie_id):
         # Retrieve the number of screenings for a specific movie

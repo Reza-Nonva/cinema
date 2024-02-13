@@ -16,6 +16,7 @@ menu = """ ====User Menu====
 +cancel_ticket [ticket id]
 +rate_movie [movie id] [rating]
 +avg_rate [movie id]
++top_rated_movies [count]
 +logout
 +dis """
     
@@ -33,6 +34,7 @@ admin_menu = """ ====Admin Menu=====
 +add_screen [movie id] [start time(y-m-d h-m-s)] [end time(y-m-d h-m-s)] [price]
 +rate_movie [movie id] [rating]
 +avg_rate [movie id]
++top_rated_movies [count]
 +logout
 +dis
 """
@@ -118,6 +120,11 @@ def handle_request(user, msg:str):
         case "avg_rate":
             movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
             return(movie_rate.calculate_average_rating(int(msg[1])))
+
+
+        case "top_rated_movies":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.top_rated_movies(int(msg[1])))
         
         case "logout":
             return(user.logout())

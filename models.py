@@ -111,7 +111,7 @@ class User:
         self.isAuthenticated = False
         self.user = None
 
-    def register_user(self, username:str, password:str, email:str, birthdate:str, mobile_number:str=None):
+    def register_user(self, username:str, password:str, email:str, birthdate:str, mobile_number:str=None, is_admin:int=0):
 
         self.cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
         existing_username = self.cursor.fetchone()
@@ -143,7 +143,7 @@ class User:
 
 
         insert_query = """
-            INSERT INTO users (username, password, email, mobile_number, birthdate, register_date, last_login_date, last_login_time) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password, email, mobile_number, birthdate, register_date, last_login_date, last_login_time, is_admin) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         user_data = (
@@ -155,6 +155,7 @@ class User:
             datetime.now().date(),
             datetime.now().date(),
             datetime.now().time(),
+            is_admin
         )
 
         self.cursor.execute(insert_query, user_data)

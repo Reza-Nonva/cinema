@@ -19,6 +19,8 @@ menu = """ ====User Menu====
 +top_rated_movies [count]
 +count_screening [movie id]
 +write_comment [movie id] [comment] [parent (optional)]
++see_comments [movie id]
++buy_plan [(bronze), (silver), (gold)]
 +logout
 +dis """
     
@@ -39,6 +41,7 @@ admin_menu = """ ====Admin Menu=====
 +top_rated_movies [count]
 +count_screening [movie id]
 +write_comment [movie id] [comment] [parent (optional)]
++see_comments [movie id]
 +logout
 +dis
 """
@@ -48,6 +51,7 @@ welcome_message = """you must login or register first
 +avg_rate [movie id]
 +top_rated_movies [count]
 +count_screening [movie id]
++see_comments [movie id]
 """
 
 FORMAT = 'UTF-8' 
@@ -143,6 +147,12 @@ def handle_request(user, msg:str):
             else:
                 return (movie_rate.write_comment(user, int(msg[1]), msg[2]))
         
+        case "buy_plan":
+            accounting = models.Accounting(DB_obj.connection, DB_obj.cursor)
+            return(accounting.buy_plan(user, msg[1]))
+        case "see_comments":
+            movie_rate = models.Movie_Rate(DB_obj.connection, DB_obj.cursor)
+            return(movie_rate.see_comments(int(msg[1])))
         case "logout":
             return(user.logout())
         

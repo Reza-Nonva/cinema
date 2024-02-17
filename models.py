@@ -95,10 +95,10 @@ class Accounting:
         if self.cursor.fetchone():
             return('You already have a basic plan')
         else:
-            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ('{user}', {1}, '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ('{user}', 1 , '{datetime.now()}', '{datetime.now() + timedelta(days=31)}');")
             self.connection.commit()
 
-    def buy_plan(self, user:int, plan_name):
+    def buy_plan(self, user, plan_name):
         """
             a function for buying and upgrade user plan
         """
@@ -108,24 +108,24 @@ class Accounting:
             'gold': [3, 100000],
         }
         
-        self.cursor.execute(f"SELECT plan_id from plan where user_id = {user};")
-        user_current_plan = self.cursor.fetchone()
+        self.cursor.execute(f"SELECT plan_id from plan where user_id = '{user.user['uuid']}';")
+        user_current_plan = self.cursor.fetchone()[0]
         self.connection.commit()
-        if self.wallet_balance(user) < plan_price[plan_name][1]:
-            print('Your wallet balance is not enough')
+        if self.wallet_balance(user.user['uuid']) < plan_price[plan_name][1]:
+            return('Your wallet balance is not enough')
         elif int(user_current_plan[0]) == plan_price[plan_name][0]:
-            print('You already have this plan')
+            return('You already have this plan')
         else:
             payment_time = datetime.now()
             finish_time = datetime.now() + timedelta(days=31)
             pay_hash = utils.payment_code_hash()
             with open('log.transaction', 'a') as f:
-                f.write(f"plan order: {plan_name}, user_id: {user}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}, pay_hash: {pay_hash}\n")
-            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', {user});")
-            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ({user}, {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
-            self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id={user};")
+                f.write(f"plan order: {plan_name}, user_id: {user.user['username']}, price: {plan_price[plan_name][1]} from {payment_time} to {finish_time}, pay_hash: {pay_hash}\n")
+            self.cursor.execute(f"INSERT INTO plan_transaction(plan_id, payment_code, date, user_id) VALUES ({plan_price[plan_name][0]}, {pay_hash}, '{payment_time}', '{user.user['uuid']}');")
+            self.cursor.execute(f"INSERT INTO plan(user_id, plan_id, start_time, finish_time) VALUES ('{user.user['uuid']}', {plan_price[plan_name][0]}, '{payment_time}', '{finish_time}');")
+            self.cursor.execute(f"UPDATE wallet SET balance = balance - {plan_price[plan_name][1]} WHERE user_id= '{user.user['uuid']}';")
             self.connection.commit()
-            print(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
+            return(f"The {plan_name} plan has been successfully purchased and the amount has been deducted from your wallet.")
 # accounting = Accounting(connection=DB_obj.connection, cursor=DB_obj.cursor)
 # accounting.add_card_by_user(user=user.user['id'], card_number='6362141809960843', cvv2='123', date='20201201', password='8765')
 # accounting.initial_setup_wallet(user=user.user['id'])
@@ -180,7 +180,7 @@ class User:
 
 
         insert_query = """
-            INSERT INTO users (username, password, email, mobile_number, birthdate, register_date, last_login_date, last_login_time, is_admin) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (username, password, email, mobile_number, birthdate, register_date, last_login_date, last_login_time, is_admin, plan) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
         """
 
         user_data = (
@@ -682,7 +682,6 @@ class Movie_Rate:
         for row in result:
             temp = dict(zip(columns, row))
             result = self.cursor.fetchone()
-
             text += (f"id: {temp['id']} ---> name:{temp['name']} -- rate:{temp['average_rating']} \n")
         return(text)
 
@@ -697,7 +696,7 @@ class Movie_Rate:
         num_movie_screenings = self.cursor.fetchone()[0]
         return str(num_movie_screenings)
 
-    def write_comment(self, user:User, movie_id:int, comment_text, parent_comment_id=None):
+    def write_comment(self, user:User, movie_id:int, comment_text, parent_comment_id=0):
         """
             a function for writing a comment for movies
         """
@@ -708,20 +707,26 @@ class Movie_Rate:
         self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
         movie_uuid = self.cursor.fetchone()[0]
 
-        self.cursor.execute(f"INSERT INTO comments (user_id, movie_id, parent_comment_id, comment_text, create_date) VALUES ('{user_uuid}', '{movie_uuid}', {parent_comment_id}, {comment_text}, {datetime.now()})")
+        self.cursor.execute(f"INSERT INTO comments (user_id, movie_id, parent_comment_id, comment_text, create_date) VALUES ('{user_uuid}', '{movie_uuid}', {parent_comment_id}, '{comment_text}', '{datetime.now()}')")
         self.connection.commit()
-        return ("ok")
+        return ("camment Saved")
         # Create a reply if the comment is a reply to an original comment
-        """
-        if parent_comment_id:
-            insert_reply_query = 
-                INSERT INTO replies (comment_id, user_id, reply_text, create_date)
-                VALUES (%s, %s, %s, %s)
-            
-            reply_data = (
-                parent_comment_id, user_id, comment_text, datetime.now()
-            )
-            self.cursor.execute(insert_reply_query, reply_data)
-            self.connection.commit()
 
-        print("Comment sent successfully.")"""
+    def see_comments(self, movie_id):
+        self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
+        movie_uuid = self.cursor.fetchone()[0]
+
+        self.cursor.execute(f"""SELECT u.username, c.comment_text, c.parent_comment_id
+                        FROM comments c inner join users u on c.user_id = u.uuid
+                        where c.movie_id = '{movie_uuid}'""")
+        
+        result = self.cursor.fetchall()
+        if not result:
+            return("No comment added for this movie")
+        text = ""
+        columns = [column[0] for column in self.cursor.description]
+        for row in result:
+            temp = dict(zip(columns, row))
+            result = self.cursor.fetchone()
+            text += (f"username: {temp['username']} ---> comment:{temp['comment_text']} -- parent:{temp['parent_comment_id']} \n")
+        return(text)

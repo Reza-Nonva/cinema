@@ -4,6 +4,9 @@ from db import DB_obj
 import utils
 
 def login_required(func):
+    """
+        a function for Login required decorator
+    """
     @wraps(func)
     def wrapper(user ,*args, **kwargs):
         if user.isAuthenticated:
@@ -13,11 +16,17 @@ def login_required(func):
     return wrapper
 
 class Accounting:
+    """
+        accounting model class
+    """
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
 
     def initial_setup_wallet(self, user):
+        """
+            a function for when register a user , create a wallet with zero balance
+        """
         self.cursor.execute(f"SELECT * FROM wallet WHERE user_id='{user}';")
         if self.cursor.fetchone():
             return('You already have a wallet')
@@ -26,6 +35,9 @@ class Accounting:
             self.connection.commit()
 
     def add_card_by_user(self, user:str, card_number:str, date, cvv2:int, password):
+        """
+            a function for add a bank card by the user
+        """
         if not utils.card_number_check(card_number):
             return(f'{card_number} is invalid card number')
         
@@ -40,6 +52,9 @@ class Accounting:
             return(f'{card_number} is added successfully')
 
     def deposite_withdraw_wallet(self, user_id:str, card_number, cvv2, password, pay_type, amount):
+        """
+            a function for deposit to wallet and withdraw from wallet
+        """
         user_card = self.cursor.execute(f"SELECT * FROM card_bank WHERE user_id = '{user_id}' AND number = {card_number} AND cvv = {cvv2} AND password = {password}")
         user_card = self.cursor.fetchone()
 
@@ -64,12 +79,18 @@ class Accounting:
             return False
  
     def wallet_balance(self, user:str):
+        """
+            a function for get wallet balance
+        """
         balance = self.cursor.execute(f"SELECT balance from wallet WHERE user_id='{user}'")
         balance = self.cursor.fetchone()[0]
         self.connection.commit()
         return balance
 
     def initial_plan_mode(self, user:int):
+        """
+            a function for when register a user set his plan mode to default mode. default mode is bronze
+        """
         self.cursor.execute(f"SELECT * FROM plan WHERE user_id='{user}';")
         if self.cursor.fetchone():
             return('You already have a basic plan')
@@ -78,6 +99,9 @@ class Accounting:
             self.connection.commit()
 
     def buy_plan(self, user:int, plan_name):
+        """
+            a function for buying and upgrade user plan
+        """
         plan_price = {
             'bronze':[1, 10000],
             'silver': [2, 50000],
@@ -113,6 +137,9 @@ class Accounting:
 # accounting.buy_plan(user=user.user['id'], plan_name='silver')
 
 class User:
+    """"
+        user model
+    """
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
@@ -120,7 +147,9 @@ class User:
         self.user = None
 
     def register_user(self, username:str, password:str, email:str, birthdate:str, mobile_number:str=None, is_admin:int=0):
-
+        """
+            a function for register a user with the specified username and email
+        """
         self.cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
         existing_username = self.cursor.fetchone()
 
@@ -175,7 +204,7 @@ class User:
 
     def initial_accounting(self, username):
         """
-            a func to setup initial wallet and plan to a new user
+            a function to setup initial wallet and plan to a new user
         """
         self.cursor.execute(f"SELECT uuid FROM users WHERE username = '{username}'")
         user_id = self.cursor.fetchone()[0]
@@ -184,6 +213,9 @@ class User:
         accounting.initial_plan_mode(user = user_id)
         
     def login_user(self, username, password):
+        """
+            a function for login user 
+        """
         if self.isAuthenticated:
             return('You already logged in please logout first')
             
@@ -205,6 +237,9 @@ class User:
         return(f"Dear {self.user['username']} you have just logged in")
         
     def change_profile(self, username=None, email=None, mobile_number=None):
+        """
+            a function for change username of email of mobile number
+        """
         if not self.isAuthenticated:
             return("Error: User should be logged in first.")
 
@@ -246,6 +281,9 @@ class User:
 
 
     def change_password(self, old_password, new_password, new_password_confirm):
+        """
+            a function for To change the user's password
+        """
         if not self.isAuthenticated:
             return("Error: User should be logged in first.")
 
@@ -267,6 +305,9 @@ class User:
         return(f"Dear {self.user['username']} you have just change your password")
 
     def logout(self):
+        """
+            a function for logout user
+        """
         self.isAuthenticated = False
         self.user = None
         return("you log out successfully")
@@ -311,11 +352,17 @@ class User:
 
 
 class Movie:
+    """
+        Movie model
+    """
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
     
     def add_movie(self, user:User, name:str, year:int, age_range:int):
+        """
+            a function for add movie to the database
+        """
         if not user.isAuthenticated:
             return("login first")
         if(user.user["is_admin"] == 0):
@@ -342,6 +389,9 @@ class Movie:
 
 
     def list_of_movie(self, user:User):
+        """
+            a function for retrieving the movie information from the database
+        """
         if not user.isAuthenticated:
             return("login first")
         if(user.user["is_admin"] == 0):
@@ -363,12 +413,18 @@ class Movie:
 # movie.add_movie('The Shawshank Redemption', 1994, 18)
 
 class Screen:
+    """
+        screening model
+    """
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
 
     
     def show_screening(self, user):
+        """
+            a function for retrieving the screen
+        """
         if not user.isAuthenticated :
             return("Error: User should be logged in first.")
         
@@ -384,6 +440,9 @@ class Screen:
             text += (f"{screening['id']} ---> name:{result[0]} -- price:{screening['price']} -- start:{screening['start_time']} -- duration:{screening['end_time']-screening['start_time']}\n")
         return(text)
     def set_movie_screening(self, user:User, movie_id:int, start_time, end_time, price):
+        """
+            a fun for add screening
+        """
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
         if (user.user["is_admin"] == 0):
@@ -493,7 +552,9 @@ class Ticket:
 
 
     def show_available_chairs(self, screen_id):
-        
+        """
+            a function for retrieving available chair
+        """
         self.cursor.execute(f"SELECT uuid from screening WHERE id = {screen_id}")
         screen_uuid = self.cursor.fetchone()[0]
 
@@ -508,6 +569,9 @@ class Ticket:
         return(f'list of free chairs in {screen_id} screen : {free_chairs}')
     
     def cancel_ticket(self, user:User, ticket_id):
+        """
+            a function for cancelling a ticket
+        """
         if not user.isAuthenticated:
             return("Error: User should be logged in first.")
         
@@ -550,11 +614,17 @@ class Ticket:
 
 
 class Movie_Rate:
+    """
+        Movie Rate model
+    """
     def __init__(self, connection, cursor):
         self.connection = connection
         self.cursor = cursor
 
     def rate_movie(self, user:User, movie_id, rating):
+        """
+            a function for rating movie
+        """
         if not user.isAuthenticated:
             return ("please first login")
         # Validate the rating
@@ -578,7 +648,9 @@ class Movie_Rate:
         return(f"Rating added: {rating} star for movie {movie_id} by User {user.user['id']}")
 
     def calculate_average_rating(self, movie_id):
-        
+        """
+            a function to calculate average rating of movie
+        """
         self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
         movie_uuid = self.cursor.fetchone()[0]
 
@@ -591,6 +663,9 @@ class Movie_Rate:
         return str(average_rating)
 
     def top_rated_movies(self, num_movies):
+        """
+            a function for retrieving the top rated movies
+        """
         # Retrieve the top-rated movies based on average ratings
         top_rated_query = """
             SELECT m.id, m.name, AVG(r.rating) as average_rating
@@ -612,7 +687,9 @@ class Movie_Rate:
         return(text)
 
     def get_movie_screenings(self, movie_id):
-        # Retrieve the number of screenings for a specific movie
+        """
+            a function for Retrieve the number of screenings for a specific movie
+        """
         self.cursor.execute(f"SELECT uuid FROM movie WHERE id = '{movie_id}'")
         movie_uuid = self.cursor.fetchone()[0]
 
@@ -621,6 +698,9 @@ class Movie_Rate:
         return str(num_movie_screenings)
 
     def write_comment(self, user:User, movie_id:int, comment_text, parent_comment_id=None):
+        """
+            a function for writing a comment for movies
+        """
         if not user.isAuthenticated:
             return ("please first login")
         # Create comment

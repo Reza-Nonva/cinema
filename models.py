@@ -233,7 +233,10 @@ class User:
         self.isAuthenticated = True
 
         self.cursor.execute(f"UPDATE users SET last_login_time = '{datetime.now().time()}' WHERE uuid = '{self.user['uuid']}'")
+        self.cursor.execute(f"UPDATE users SET last_login_date = '{datetime.now().date()}' WHERE uuid = '{self.user['uuid']}'")
+
         self.connection.commit()
+
         return(f"Dear {self.user['username']} you have just logged in")
         
     def change_profile(self, username=None, email=None, mobile_number=None):
